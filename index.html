@@ -1,0 +1,1779 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Core Keeper - 拠点レイアウトシミュレータ</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;700&family=Orbitron:wght@500;700;900&family=DotGothic16&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0b0d10;
+            --panel-bg: rgba(20, 24, 33, 0.85);
+            --border-color: rgba(56, 189, 248, 0.2);
+            --primary: #38bdf8;
+            --primary-glow: rgba(56, 189, 248, 0.4);
+            --accent: #f59e0b;
+            --accent-glow: rgba(245, 158, 11, 0.4);
+            --text-main: #f3f4f6;
+            --text-muted: #9ca3af;
+            
+            /* レアリティカラー */
+            --rarity-legendary: #f59e0b;
+            --rarity-epic: #a855f7;
+            --rarity-rare: #3b82f6;
+            --rarity-normal: #4b5563;
+            
+            --tile-chest: #ec4899;
+            --tile-chest-glow: rgba(236, 72, 153, 0.4);
+            --tile-bench: #10b981; /* クラフト設備：鮮やかなグリーン */
+            --tile-bench-glow: rgba(16, 185, 129, 0.4);
+            --tile-path: #2d3748;
+            --tile-free: #111827;
+            
+            --tile-mannequin: #ea580c;
+            --tile-outbound: #3b82f6;
+            --tile-inbound: #eab308;
+            
+            --tile-west-vault: #ef4444; /* 西翼：コレクション (赤) */
+            --tile-east-vault: #b45309; /* 東翼：建築・家具 (ウッドブラウンに変更して緑との重複を解消！) */
+            --tile-east-vault-glow: rgba(180, 83, 9, 0.4);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', 'DotGothic16', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(20, 30, 45, 0.7) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(35, 15, 40, 0.7) 0%, transparent 40%);
+            min-height: 100vh;
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            background: rgba(11, 13, 16, 0.9);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 2rem;
+            backdrop-filter: blur(10px);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 10;
+            gap: 20px;
+        }
+
+        .logo {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 900;
+            color: var(--primary);
+            text-shadow: 0 0 10px var(--primary-glow);
+            letter-spacing: 2px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            white-space: nowrap;
+        }
+
+        .logo span {
+            color: var(--accent);
+            text-shadow: 0 0 10px var(--accent-glow);
+        }
+
+        /* 検索バー */
+        .search-container {
+            position: relative;
+            flex: 1;
+            max-width: 500px;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 0.6rem 1rem 0.6rem 2.5rem;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid var(--border-color);
+            border-radius: 9999px;
+            color: var(--text-main);
+            font-family: inherit;
+            font-size: 0.9rem;
+            transition: all 0.3s;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 10px var(--primary-glow);
+            background: rgba(0, 0, 0, 0.7);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            pointer-events: none;
+            font-size: 0.9rem;
+        }
+
+        .search-results {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: rgba(15, 23, 42, 0.98);
+            border: 1px solid var(--primary);
+            border-top: none;
+            border-radius: 0 0 12px 12px;
+            max-height: 250px;
+            overflow-y: auto;
+            z-index: 100;
+            display: none;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        }
+
+        .search-result-item {
+            padding: 10px 15px;
+            cursor: pointer;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            font-size: 0.85rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background 0.15s;
+        }
+
+        .search-result-item:hover {
+            background: rgba(56, 189, 248, 0.15);
+        }
+
+        .search-result-item .item-meta {
+            font-size: 0.7rem;
+            background: rgba(255,255,255,0.08);
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: var(--text-muted);
+        }
+
+        .version-badge {
+            background: rgba(245, 158, 11, 0.15);
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            white-space: nowrap;
+        }
+
+        main {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1.15fr 1fr;
+            gap: 2rem;
+            padding: 2rem;
+            max-width: 1750px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .simulator-container {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .instructions-panel {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.25rem;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        .instructions-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1rem;
+            color: var(--accent);
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .instructions-text {
+            font-size: 0.85rem;
+            line-height: 1.6;
+            color: var(--text-muted);
+        }
+
+        .sim-badge {
+            background: rgba(16, 185, 129, 0.15);
+            border: 1px solid #10b981;
+            color: #10b981;
+            padding: 0.2rem 0.6rem;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            animation: pulse-glow 1.5s infinite;
+        }
+
+        .grid-wrapper {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 1.25rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            position: relative;
+        }
+
+        /* 17x19 統合メガグリッド */
+        .grid-map {
+            display: grid;
+            grid-template-columns: repeat(17, 39px);
+            grid-template-rows: repeat(19, 39px);
+            gap: 3px;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            position: relative;
+        }
+
+        .grid-cell {
+            width: 39px;
+            height: 39px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-size: 0.55rem;
+            font-weight: 700;
+            text-align: center;
+            user-select: none;
+            line-height: 1.1;
+            padding: 1px;
+        }
+
+        /* セルタイプごとの背景 */
+        .cell-path {
+            background-color: var(--tile-path);
+            border: 1px solid rgba(255, 255, 255, 0.03);
+        }
+        .cell-path:hover {
+            background-color: #3f4e66;
+        }
+
+        .cell-free {
+            background-color: var(--tile-free);
+            border: 1px solid rgba(255, 255, 255, 0.01);
+            color: #374151;
+        }
+        .cell-free:hover {
+            background-color: #1e293b;
+        }
+
+        /* --- 【改善：大きい宝箱】2×2マスの重厚な枠線スタイル --- */
+        .cell-chest {
+            background: linear-gradient(135deg, #2e1065, #4c1d95);
+            border: 2px solid #d946ef;
+            color: #f5d0fe;
+            box-shadow: 0 0 6px rgba(217, 70, 239, 0.3), inset 0 0 8px rgba(255, 255, 255, 0.1);
+        }
+        .cell-chest:hover {
+            filter: brightness(1.25);
+            box-shadow: 0 0 12px var(--tile-chest-glow), inset 0 0 10px rgba(217, 70, 239, 0.5);
+        }
+
+        .cell-bench {
+            background: linear-gradient(135deg, #064e3b, #065f46);
+            border: 1.5px solid #10b981;
+            color: #a7f3d0;
+            box-shadow: inset 0 0 6px rgba(16, 185, 129, 0.3);
+        }
+        .cell-bench:hover {
+            filter: brightness(1.25);
+            box-shadow: 0 0 10px var(--tile-bench-glow);
+        }
+
+        .cell-wall {
+            background-color: #1f2937;
+            background-image: repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(0,0,0,0.3) 5px, rgba(0,0,0,0.3) 10px);
+            border: 1px solid #374151;
+            color: #4b5563;
+            cursor: not-allowed;
+        }
+
+        .cell-mannequin {
+            background: linear-gradient(135deg, #7c2d12, #9a3412);
+            border: 1.5px solid #ea580c;
+            color: #ffedd5;
+            box-shadow: inset 0 0 6px rgba(234, 88, 12, 0.3);
+        }
+
+        /* --- 【改善：普通の宝箱】1×1マスのシンプルな枠線スタイル --- */
+        .cell-outbound-chest {
+            background: linear-gradient(135deg, #1d4ed8, #1e40af);
+            border: 1px solid var(--tile-outbound);
+            color: #e0f2fe;
+            box-shadow: inset 0 0 4px rgba(59, 130, 246, 0.2);
+        }
+        .cell-outbound-chest:hover {
+            filter: brightness(1.2);
+            box-shadow: 0 0 8px var(--tile-outbound);
+        }
+
+        .cell-inbound-chest {
+            background: linear-gradient(135deg, #a16207, #854d0e);
+            border: 1px solid var(--tile-inbound);
+            color: #fef3c7;
+            box-shadow: inset 0 0 4px rgba(234, 179, 8, 0.2);
+        }
+        .cell-inbound-chest:hover {
+            filter: brightness(1.2);
+            box-shadow: 0 0 8px var(--tile-inbound);
+        }
+
+        /* 西翼コレクション大倉庫 */
+        .cell-west-chest {
+            background: linear-gradient(135deg, #7f1d1d, #991b1b);
+            border: 2px solid var(--tile-west-vault);
+            color: #fca5a5;
+            box-shadow: 0 0 6px rgba(239, 68, 68, 0.3);
+        }
+        .cell-west-chest:hover {
+            filter: brightness(1.25);
+            box-shadow: 0 0 10px var(--tile-west-vault);
+        }
+
+        /* 東翼建築大倉庫 (緑から高級なウッドブラウンに変更して視認性を劇的向上！) */
+        .cell-east-chest {
+            background: linear-gradient(135deg, #78350f, #9a3412);
+            border: 2px solid var(--tile-east-vault);
+            color: #ffedd5;
+            box-shadow: 0 0 6px var(--tile-east-vault-glow);
+        }
+        .cell-east-chest:hover {
+            filter: brightness(1.25);
+            box-shadow: 0 0 10px var(--tile-east-vault);
+        }
+
+        /* 検索でヒットした際の点滅ハイライト */
+        .search-highlight {
+            animation: pulse-search-glow 0.8s infinite alternate !important;
+            border: 2.5px solid #fff !important;
+            box-shadow: 0 0 20px #fff, inset 0 0 10px rgba(255, 255, 255, 0.8) !important;
+            z-index: 10;
+        }
+
+        @keyframes pulse-search-glow {
+            from { transform: scale(1); filter: brightness(1); }
+            to { transform: scale(1.15); filter: brightness(1.6); }
+        }
+
+        /* シミュレーション状態のスタイル */
+        .range-in {
+            position: relative;
+        }
+        .range-in::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border: 2px solid #00f0ff;
+            border-radius: 4px;
+            box-shadow: 0 0 8px #00f0ff;
+            animation: pulse-glow 1.5s infinite;
+            pointer-events: none;
+        }
+
+        .range-out {
+            opacity: 0.25;
+            filter: grayscale(85%);
+        }
+
+        .selected-bench {
+            animation: bounce-bench 0.6s infinite alternate;
+            border: 2px solid #fff !important;
+            box-shadow: 0 0 15px #10b981, inset 0 0 8px rgba(255, 255, 255, 0.7) !important;
+            z-index: 5;
+        }
+
+        @keyframes pulse-glow {
+            0% { opacity: 0.5; }
+            50% { opacity: 1; }
+            100% { opacity: 0.5; }
+        }
+
+        @keyframes bounce-bench {
+            from { transform: scale(1); }
+            to { transform: scale(1.06); }
+        }
+
+        /* 右側エリア：詳細パネル */
+        .detail-container {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            max-height: calc(100vh - 120px);
+            overflow-y: auto;
+            padding-right: 5px;
+        }
+
+        .detail-container::-webkit-scrollbar {
+            width: 6px;
+        }
+        .detail-container::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.1);
+        }
+        .detail-container::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 3px;
+        }
+
+        .info-panel {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 1.5rem;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            width: 100%;
+        }
+
+        .panel-header {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 1rem;
+            margin-bottom: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .panel-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--primary);
+            text-shadow: 0 0 10px var(--primary-glow);
+        }
+
+        .panel-subtitle {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .chest-inventory-title {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 0.75rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .inventory-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 8px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 2px solid #2d3748;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 1.25rem;
+            width: 100%;
+        }
+
+        .inventory-slot {
+            aspect-ratio: 1;
+            background-color: rgba(255, 255, 255, 0.02);
+            border: 1.5px dashed rgba(255, 255, 255, 0.08);
+            border-radius: 6px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            min-width: 0;
+        }
+
+        .inventory-slot.occupied {
+            background-color: rgba(255, 255, 255, 0.06);
+            border-style: solid;
+        }
+        
+        .inventory-slot.occupied:hover {
+            background-color: rgba(255, 255, 255, 0.15);
+            transform: scale(1.08);
+            z-index: 2;
+        }
+
+        .slot-normal { border-color: var(--rarity-normal); }
+        .slot-rare { 
+            border-color: var(--rarity-rare); 
+            box-shadow: inset 0 0 6px rgba(59, 130, 246, 0.4);
+        }
+        .slot-epic { 
+            border-color: var(--rarity-epic); 
+            box-shadow: inset 0 0 8px rgba(168, 85, 247, 0.4);
+        }
+        .slot-legendary { 
+            border-color: var(--rarity-legendary); 
+            box-shadow: inset 0 0 10px rgba(245, 158, 11, 0.4);
+        }
+
+        .slot-icon {
+            font-size: 1.75rem;
+        }
+
+        .text-list-item {
+            font-size: 0.8rem;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            transition: all 0.15s;
+        }
+
+        .text-list-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.15);
+            transform: translateX(3px);
+        }
+
+        .item-preview-box {
+            background: rgba(15, 23, 42, 0.95);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 10px;
+            display: none;
+            animation: fadeIn 0.2s ease-out;
+            width: 100%;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .preview-title-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 6px;
+            margin-bottom: 6px;
+        }
+
+        .preview-name {
+            font-weight: 700;
+            font-size: 0.95rem;
+        }
+
+        .preview-rarity {
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            padding: 1px 6px;
+            border-radius: 4px;
+        }
+
+        .preview-desc {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            line-height: 1.4;
+        }
+
+        .legend-panel {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 1.25rem;
+            backdrop-filter: blur(10px);
+        }
+
+        .legend-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.875rem;
+            color: var(--text-main);
+            margin-bottom: 0.75rem;
+            letter-spacing: 1px;
+        }
+
+        .legend-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.8rem;
+        }
+
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 4px;
+        }
+
+        .legend-c-chest { background: linear-gradient(135deg, #2e1065, #4c1d95); border: 2px solid #d946ef; }
+        .legend-c-bench { background: linear-gradient(135deg, #064e3b, #065f46); border: 1.5px solid #10b981; }
+        .legend-c-outbound { background: linear-gradient(135deg, #1d4ed8, #1e40af); border: 1px solid var(--tile-outbound); }
+        .legend-c-inbound { background: linear-gradient(135deg, #a16207, #854d0e); border: 1px solid var(--tile-inbound); }
+        .legend-c-west-chest { background: linear-gradient(135deg, #7f1d1d, #991b1b); border: 2px solid var(--tile-west-vault); }
+        .legend-c-east-chest { background: linear-gradient(135deg, #78350f, #9a3412); border: 2px solid var(--tile-east-vault); }
+        
+        .stat-badge {
+            background: rgba(56, 189, 248, 0.1);
+            border: 1px solid var(--primary);
+            color: var(--primary);
+            padding: 0.4rem 0.8rem;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 0.5rem;
+        }
+
+        .stat-badge span {
+            font-weight: 700;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo">
+            CORE KEEPER <span>FORTRESS</span>
+        </div>
+        
+        <!-- リアルタイム収納先検索バー -->
+        <div class="search-container">
+            <span class="search-icon">🔍</span>
+            <input type="text" class="search-input" id="search-input" placeholder="収納先を検索 (例: 銅、ルーンソング、ベッド、ポーション...)">
+            <div class="search-results" id="search-results"></div>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <span class="version-badge">SWITCH 2 EDITION</span>
+            <span style="color: var(--text-muted); font-size: 0.8rem;">Ver. 2026.06</span>
+        </div>
+    </header>
+
+    <main>
+        <!-- 左側：シミュレーター -->
+        <div class="simulator-container">
+            <div class="instructions-panel">
+                <div class="instructions-title" style="display: flex; align-items: center; width: 100%;">
+                    <span>⚡ 17×19マース 要塞レイアウト & 自動収納検索</span>
+                    <span class="sim-badge" id="sim-overlay" style="display: none; margin-left: auto;">SIMULATION ACTIVE</span>
+                </div>
+                <p class="instructions-text" style="margin-bottom: 0.5rem;">
+                    <strong>【改善点】</strong><br>
+                    1. <strong>宝箱サイズ差別化</strong>: <strong>太枠＆2x2マス</strong>が「大きい宝箱 (36枠)」、<strong>細枠＆1x1マス</strong>が「普通の宝箱」です。<br>
+                    2. <strong>東翼のカラー変更</strong>: クラフト設備との重複を防ぐため、東翼（建築・家具）のテーマカラーを**緑**から**ウッドブラウン(茶)**に変更しました。
+                </p>
+            </div>
+
+            <div class="grid-wrapper">
+                <div class="grid-map" id="map-grid">
+                    <!-- JSで動的にセルを生成 (17x19) -->
+                </div>
+            </div>
+
+            <div class="legend-panel">
+                <div class="legend-title">拠点構成要素の凡例</div>
+                <div class="legend-grid">
+                    <div class="legend-item">
+                        <div class="legend-color legend-c-chest"></div>
+                        <span>大きい宝箱 (2×2 / 素材 C1〜C12)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color legend-c-bench"></div>
+                        <span>クラフト設備 (1×1 / W1〜W20)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color legend-c-outbound"></div>
+                        <span>普通の宝箱 (1×1 / 出発 E1〜E4)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color legend-c-inbound"></div>
+                        <span>普通の宝箱 (1×1 / 帰還 E5〜E8)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color legend-c-west-chest"></div>
+                        <span>大きい宝箱 (2×2 / コレクション D1〜D6)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color legend-c-east-chest"></div>
+                        <span>大きい宝箱 (2×2 / 建築・家具 B1〜B6)</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右側：詳細表示パネル -->
+        <div class="detail-container">
+            <div class="info-panel" id="detail-panel">
+                <div class="panel-header">
+                    <div>
+                        <div class="panel-subtitle">Base Status</div>
+                        <div class="panel-title">要塞設計の全体像</div>
+                    </div>
+                    <span class="item-category-tag" style="background:rgba(56,189,248,0.15); border-color:var(--primary); color:var(--primary)">総スロット: 1152</span>
+                </div>
+                
+                <div class="instructions-text" style="color: var(--text-main); margin-bottom: 1rem;">
+                    <strong>『クラフト素材・消耗品外』すべてのためのアーカイブ設計:</strong><br>
+                    クラフト素材（C1〜C12）や冒険用消耗品・現役装備（E1〜E8）以外の、拠点作り・部屋作り・コレクション収集に必要な全アイテムを格納する「大デポ」を左右の外郭に統合しました。<br><br>
+                    1. <strong>西翼：コレクション＆アーカイブ (D1〜D6 / 赤系 / 大きい宝箱)</strong><br>
+                    NPC居住要請アイテム、モブフィギュア、コレクション用のおもしろ/ネタ衣装、楽器、各種シーズンイベント限定家具を仕分けて保管します。<br><br>
+                    2. <strong>東翼：メガ建築＆インテリア (B1〜B6 / 茶系 / 大きい宝箱)</strong><br>
+                    C2に入り切らない膨大な「バイオーム別装飾ブロック」や、部屋作りのためのベッド・椅子・机、ネオン・燭台などの照明装飾、フェンス・ドア、装飾用の園芸植物を保管します。
+                </div>
+
+                <div class="stat-badge">
+                    <span>クラフト連携大チェスト (36枠):</span>
+                    <span>12箱 × 36 = 432スロット</span>
+                </div>
+                <div class="stat-badge" style="margin-top: 10px;">
+                    <span>大倉庫・アーカイブチェスト (36枠):</span>
+                    <span>12箱 × 36 = 432スロット</span>
+                </div>
+                <div class="stat-badge" style="margin-top: 10px;">
+                    <span>冒険者用チェスト (普通箱):</span>
+                    <span>8箱 × 36 = 288スロット</span>
+                </div>
+            </div>
+            
+            <div class="item-preview-box" id="item-preview-box">
+                <div class="preview-title-row">
+                    <span class="preview-name" id="preview-name">銅の鉱石</span>
+                    <span class="preview-rarity" id="preview-rarity" style="color: #fff; background-color: var(--rarity-normal);">Normal</span>
+                </div>
+                <div class="preview-desc" id="preview-desc">
+                    銅製品のベースとなる鉱石材料。
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // 統合メガグリッドデータ (17列 x 19行)
+        // 0: 空き角スペース(free), 1: 通路(path), 2: 素材チェスト(chest), 3: 設備(bench), 4: 境界壁(wall), 5: マネキン(mannequin)
+        // 7: 出発チェスト(outbound-chest), 8: 帰還チェスト(inbound-chest)
+        // 9: 西翼コレクション(west-chest), 10: 東翼建築(east-chest)
+        const mapData = [
+            [9, 9, 1, 0, 0, 2, 2, 2, 2, 2, 2, 2, 2, 0, 1, 10, 10], // 行0
+            [9, 9, 1, 0, 0, 2, 2, 2, 2, 2, 2, 2, 2, 0, 1, 10, 10], // 行1
+            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,  1,  1], // 行2
+            [9, 9, 1, 2, 2, 1, 3, 3, 3, 3, 3, 1, 2, 2, 1, 10, 10], // 行3
+            [9, 9, 1, 2, 2, 1, 3, 3, 3, 3, 3, 1, 2, 2, 1, 10, 10], // 行4
+            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,  1,  1], // 行5
+            [9, 9, 1, 2, 2, 1, 3, 3, 3, 3, 3, 1, 2, 2, 1, 10, 10], // 行6
+            [9, 9, 1, 2, 2, 1, 3, 3, 3, 3, 3, 1, 2, 2, 1, 10, 10], // 行7
+            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,  1,  1], // 行8
+            [9, 9, 1, 0, 0, 2, 2, 2, 2, 2, 2, 2, 2, 0, 1, 10, 10], // 行9
+            [9, 9, 1, 0, 0, 2, 2, 2, 2, 2, 2, 2, 2, 0, 1, 10, 10], // 行10
+            [4, 4, 4, 4, 4, 4, 4, 4, 1, 4, 4, 4, 4, 4, 4,  4,  4], // 行11
+            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,  1,  1], // 行12
+            [9, 9, 1, 1, 5, 5, 1, 1, 1, 3, 1, 1, 1, 1, 1, 10, 10], // 行13
+            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,  1,  1], // 行14
+            [9, 9, 1, 1, 7, 7, 1, 1, 1, 8, 8, 1, 1, 1, 1, 10, 10], // 行15
+            [9, 9, 1, 1, 7, 7, 1, 1, 1, 8, 8, 1, 1, 1, 1, 10, 10], // 行16
+            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,  1,  1], // 行17
+            [4, 4, 4, 4, 4, 4, 4, 4, 1, 4, 4, 4, 4, 4, 4,  4,  4]  // 行18
+        ];
+
+        // 素材大チェスト (C1〜C12)
+        const chests = {
+            "C1": { name: "C1: 木材・繊維・植物 (大チェスト)", label: "木材/繊維 (大)", icon: "🪵", category: "基本資材", coords: [[5,0],[6,0],[5,1],[6,1]], desc: "木工や布地クラフト、建築で最も大量に消費する植物系素材をまとめます。", slots: [
+                { name: "木材", emoji: "🪵", rarity: "normal", desc: "すべてのクラフトの基礎となる原木。" },
+                { name: "厚板", emoji: "🪵", rarity: "normal", desc: "木材をテーブルソーで加工した板材。" },
+                { name: "コーラルウッド", emoji: "🪸", rarity: "normal", desc: "沈んだ海バイオームに自生するサンゴの木。" },
+                { name: "サンゴ of 厚板", emoji: "🪸", rarity: "normal", desc: "コーラルウッドをテーブルソーで加工した板材。" },
+                { name: "光の木材", emoji: "💡", rarity: "normal", desc: "光輝の辺境バイオームに自生する発光する木材。" },
+                { name: "光り木の厚板", emoji: "💡", rarity: "normal", desc: "光の木材をテーブルソーで加工した板材。" },
+                { name: "繊維", emoji: "🌾", rarity: "normal", desc: "植物から採取したクラフト用の天然繊維。" }
+            ]},
+            "C2": { name: "C2: 土・粘土・石・砂・建材 (大チェスト)", label: "土/石/建材 (大)", icon: "🪨", category: "建材ブロック", coords: [[7,0],[8,0],[7,1],[8,1]], desc: "整地や橋、壁の作成など、拠点の拡張に使う土木ブロック群です。", slots: [
+                { name: "土の壁", emoji: "🟫", rarity: "normal", desc: "土のバイオームの壁ブロック。" },
+                { name: "土の地面", emoji: "🟫", rarity: "normal", desc: "整地用の土ブロック。" },
+                { name: "粘土の壁", emoji: "🧱", rarity: "normal", desc: "粘土バイオームの壁。レンガの材料。" },
+                { name: "粘土の地面", emoji: "🧱", rarity: "normal", desc: "粘土ブロック。" },
+                { name: "石の壁", emoji: "🪨", rarity: "normal", desc: "石バイオームの強固な壁ブロック。" },
+                { name: "石の地面", emoji: "🪨", rarity: "normal", desc: "石製の床材や橋の土台材料。" },
+                { name: "砂の壁", emoji: "🏜️", rarity: "normal", desc: "砂漠バイオームの砂壁。ガラスの材料。" },
+                { name: "砂の地面", emoji: "🏜️", rarity: "normal", desc: "砂漠の砂ブロック。" },
+                { name: "大理石", emoji: "🏛️", rarity: "normal", desc: "高級な家具やブロックの材料となる白い岩石。" },
+                { name: "溶岩石", emoji: "🌋", rarity: "normal", desc: "溶岩地帯に存在する頑丈な黒い岩石。" },
+                { name: "結晶の壁", emoji: "💎", rarity: "normal", desc: "光輝の辺境に広がる結晶性の硬い防壁ブロック。" },
+                { name: "ガラスの部品", emoji: "🥛", rarity: "normal", desc: "砂をガラスの溶鉱炉で精錬した加工部品。" }
+            ]},
+            "C3": { name: "C3: 初〜中期鉱石・インゴット (大チェスト)", label: "銅/スズ/鉄 (大)", icon: "🥉", category: "金属材料", coords: [[9,0],[10,0],[9,1],[10,1]], desc: "ゲーム初期から中盤にかけて使用する金属インゴットとパーツです。", slots: [
+                { name: "銅の鉱石", emoji: "🥉", rarity: "normal", desc: "初期ツールや電線の材料となる鉱石。" },
+                { name: "銅のインゴット", emoji: "🪙", rarity: "normal", desc: "銅の鉱石をかまどで精錬した金属バー。" },
+                { name: "スズの鉱石", emoji: "🥈", rarity: "normal", desc: "スズ製品や青銅の材料となる鉱石。" },
+                { name: "スズのインゴット", emoji: "🪙", rarity: "normal", desc: "スズの鉱石をかまどで精錬した金属バー。" },
+                { name: "鉄の鉱石", emoji: "⚙️", rarity: "normal", desc: "中盤の装備や鉄道資材の材料となる鉱石。" },
+                { name: "鉄のインゴット", emoji: "🪙", rarity: "normal", desc: "鉄の鉱石をかまどで精錬した金属バー。" },
+                { name: "青銅のバー", emoji: "🪙", rarity: "normal", desc: "銅とスズをかまどで混ぜ合わせて作った中級合金バー。" },
+                { name: "機械の部品", emoji: "⚙️", rarity: "normal", desc: "様々な機械やアップグレードに多用される基本パーツ。" }
+            ]},
+            "C4": { name: "C4: 後期〜最上位金属＆宝石 (大チェスト)", label: "金/ソラライト (大)", icon: "💎", category: "金属材料", coords: [[11,0],[12,0],[11,1],[12,1]], desc: "後半のバイオームで手に入る上位金属と、アップグレード用の宝石類です。", slots: [
+                { name: "金の鉱石", emoji: "🥇", rarity: "normal", desc: "溶鉱炉で精製する金製品の原料鉱石。" },
+                { name: "金のインゴット", emoji: "🪙", rarity: "normal", desc: "金の鉱石を精錬した貴重なバー。" },
+                { name: "真紅石の鉱石", emoji: "🔴", rarity: "normal", desc: "真紅石のインゴットの原料鉱石。" },
+                { name: "真紅石のインゴット", emoji: "🪙", rarity: "normal", desc: "森バイオームの探索に必須の上位金属。" },
+                { name: "オクタリンの鉱石", emoji: "🔵", rarity: "normal", desc: "オクタリンのインゴットの原料鉱石。" },
+                { name: "オクタリンのインゴット", emoji: "🪙", rarity: "normal", desc: "海バイオームの探索に必要な防具などの材料。" },
+                { name: "ガラクサイトの鉱石", emoji: "🟡", rarity: "normal", desc: "ガラクサイトのインゴットの原料鉱石。" },
+                { name: "ガラクサイトのインゴット", emoji: "🪙", rarity: "normal", desc: "砂漠バイオームの探索に必要な上位金属。" },
+                { name: "ソラライトの鉱石", emoji: "☀️", rarity: "normal", desc: "ソラライトのインゴットの原料鉱石。" },
+                { name: "ソラライトのインゴット", emoji: "🪙", rarity: "normal", desc: "光輝の辺境で獲得できる最上位の金属バー。" },
+                { name: "パンドリウムの鉱石", emoji: "🪐", rarity: "normal", desc: "最深部「通路」で手に入る終盤鉱石。" },
+                { name: "パンドリウムのインゴット", emoji: "🪙", rarity: "normal", desc: "最強のパンドリウム装備をクラフトする超レア金属。" },
+                { name: "リラサイトの鉱石", emoji: "🟣", rarity: "normal", desc: "空虚バイオームで手に入る最新の追加鉱石。" },
+                { name: "リラサイトのインゴット", emoji: "🪙", rarity: "normal", desc: "最新装備のクラフトに使用する極めて貴重なインゴット。" },
+                { name: "古代の宝石", emoji: "💎", rarity: "rare", desc: "装備品の性能をアップグレード台で強化するのに必要な宝石。" },
+                { name: "密林のヒスイ", emoji: "🟢", rarity: "rare", desc: "アゼオス原生地域の異星の施設などで手に入る強化ジェム。" },
+                { name: "海のサファイア", emoji: "🔵", rarity: "rare", desc: "沈んだ海バイオームの異星の施設などで手に入る強化ジェム。" },
+                { name: "砂漠のルビー", emoji: "🔴", rarity: "rare", desc: "始まりの砂漠バイオームの異星の施設などで手に入る強化ジェム。" }
+            ]},
+            "C5": { name: "C5: 電気・自動化部品 (大チェスト)", label: "電線/アーム (大)", icon: "🔌", category: "自動化素材", coords: [[3,3],[4,3],[3,4],[4,4]], desc: "電気配線やベルトコンベアなどの自動化ラインをクラフトする素材です。", slots: [
+                { name: "銅の電線", emoji: "🔌", rarity: "normal", desc: "電気を長距離へ伝達する基本の電線。" },
+                { name: "電気回路", emoji: "🔌", rarity: "normal", desc: "様々な電化製品をクラフトするための中間基板。" },
+                { name: "オクタリンの回路", emoji: "🔌", rarity: "normal", desc: "高精度な自動化設備に必要な上位の電子基板。" },
+                { name: "ガラクサイトのワイヤー", emoji: "🔌", rarity: "normal", desc: "より高速・高度な回路クラフトに必要なワイヤー。" },
+                { name: "レバー", emoji: "🎛️", rarity: "normal", desc: "回路のオン・オフを切り替えるスイッチ。" },
+                { name: "スイッチ", emoji: "🔌", rarity: "normal", desc: "電子回路の論理スイッチ。" },
+                { name: "圧力板", emoji: "🟩", rarity: "normal", desc: "踏むことで電流を流すスイッチ。" },
+                { name: "コンベアベルト", emoji: "➡️", rarity: "normal", desc: "アイテムを自動で移送する搬送帯。" },
+                { name: "ロボットアーム", emoji: "🤖", rarity: "normal", desc: "チェストから自動的に搬入・搬出するアーム。" }
+            ]},
+            "C6": { name: "C6: 錬金術・スライム・化学 (大チェスト)", label: "スライム/錬金 (大)", icon: "🧪", category: "錬金素材", coords: [[3,6],[4,6],[3,7],[4,7]], desc: "ポーション作成やスライム系クラフトに使用する化学系素材です。", slots: [
+                { name: "スライム", emoji: "💧", rarity: "normal", desc: "基本の接着・錬金用スライムの塊。" },
+                { name: "毒のスライム", emoji: "☣️", rarity: "normal", desc: "毒属性のクラフトや錬金に用いる紫色のスライム塊。" },
+                { name: "すべりやすいスライム", emoji: "❄️", rarity: "normal", desc: "滑り止めや氷系クラフトに用いる青いスライム塊。" },
+                { name: "マグマスライム", emoji: "🔥", rarity: "normal", desc: "高熱やマグマ属性のクラフトに用いる赤いスライム塊。" },
+                { name: "毒の液", emoji: "🧪", rarity: "normal", desc: "毒バイオームの生物から抽出した危険な毒液。" },
+                { name: "溶岩の液", emoji: "🧪", rarity: "normal", desc: "溶岩地帯から汲み取れる高熱の抽出液。" },
+                { name: "発光チューリップ", emoji: "🌷", rarity: "normal", desc: "光源をクラフトしたり、暗視・発光ポーションを作る基本植物。" },
+                { name: "爆発こやし", emoji: "💩", rarity: "normal", desc: "爆発トラップやポーションの材料。" }
+            ]},
+            "C7": { name: "C7: 繊維・織物・なめし革 (大チェスト)", label: "羊毛/皮/革 (大)", icon: "🧵", category: "繊維素材", coords: [[12,3],[13,3],[12,4],[13,4]], desc: "主に防具や装飾用の衣服、帆布などの作成に用いる有機繊維系素材です。", slots: [
+                { name: "羊毛", emoji: "🐏", rarity: "normal", desc: "牧畜で育てた羊などから毛刈りで手に入れる繊維。" },
+                { name: "おだんご虫プレート", emoji: "🐛", rarity: "normal", desc: "家畜化したおだんご虫から手に入る厚手の甲殻。" },
+                { name: "毛皮", emoji: "🐆", rarity: "normal", desc: "野生モブのドロップなどから手に入る基本の皮素材。" },
+                { name: "毛糸", emoji: "🧶", rarity: "normal", desc: "羊毛を紡いで糸状にした中間クラフト素材。" },
+                { name: "綿花", emoji: "🌾", rarity: "normal", desc: "栽培によって収穫できる高品質な布用の植物原料。" },
+                { name: "キャンバス生地", emoji: "⛵", rarity: "normal", desc: "綿花などから織り上げたボートの帆やテント用の生地。" },
+                { name: "厚手のなめし革", emoji: "👞", rarity: "normal", desc: "上位の頑丈な防具やバッグをクラフトするのに必要な高級革。" }
+            ]},
+            "C8": { name: "C8: モンスター素材・解体 (大チェスト)", label: "骨/ガラクタ (大)", icon: "🦴", category: "モンスタードロップ", coords: [[12,6],[13,6],[12,7],[13,7]], desc: "敵モブからドロップする生物系素材や、解体時に得られる素材です。", slots: [
+                { name: "ガラクタ部品", emoji: "🗑️", rarity: "normal", desc: "不要な装備品を回収修理台で解体した際に出るリサイクルパーツ。" },
+                { name: "細胞質", emoji: "🧫", rarity: "normal", desc: "通路バイオームの奇怪な生物からドロップする細胞素材。" },
+                { name: "石灰化した貝", emoji: "🐚", rarity: "normal", desc: "通路バイオームの殻を持つ生物からドロップする強固な石灰殻。" },
+                { name: "破損した合金", emoji: "🧩", rarity: "normal", desc: "空虚バイオームのジオボット等からドロップする機械部品。" },
+                { name: "骨", emoji: "🦴", rarity: "normal", desc: "初期の武器やトラップの材料、および肥料に使う骨。" },
+                { name: "虫の殻", emoji: "🐛", rarity: "normal", desc: "幼虫等の甲殻類ドロップ。頑丈な防具の裏地や盾の素材。" },
+                { name: "有毒なトゲ", emoji: "🌵", rarity: "normal", desc: "始まりの砂漠などのトゲ植物や生物からドロップする戦闘用トゲ。" }
+            ]},
+            "C9": { name: "C9: 固有レア素材・ボス召喚・ポータル (大チェスト)", label: "ボス/伝説 (大)", icon: "🌀", category: "レア素材", coords: [[5,9],[6,9],[5,10],[6,10]], desc: "伝説武器の作成、ワープポータルの核、ボスの再召喚アイテムに必要な貴重品です。", slots: [
+                { name: "欠けた刃", emoji: "🗡️", rarity: "legendary", desc: "伝説の剣「ルーンソング」の作成に必要な超レア部品。" },
+                { name: "透き通った宝石", emoji: "💎", rarity: "legendary", desc: "伝説の剣「ルーンソング」のコアパーツとなる透き通ったジェム。" },
+                { name: "停止プロトコル", emoji: "💾", rarity: "epic", desc: "大都市のコア遺跡からハックして取り出す伝説銃のクラフト部品。" },
+                { name: "異常レポート", emoji: "📄", rarity: "epic", desc: "大都市の遺跡データ。伝説のテクノロジー武器の材料。" },
+                { name: "上書き転写", emoji: "💾", rarity: "epic", desc: "大都市のコアデータ。伝説武器クラフトに使用。" },
+                { name: "交信の宝石", emoji: "🔮", rarity: "epic", desc: "特殊なクリスタル。" },
+                { name: "折れたリム", emoji: "⚙️", rarity: "epic", desc: "大都市の防衛ロボから回収できるハイテク機械リム。" },
+                { name: "エネルギーストリング", emoji: "🧵", rarity: "epic", desc: "伝説の遠距離武器などの弦部分に使用するエネルギー紐。" },
+                { name: "ポータルの核", emoji: "🌀", rarity: "epic", desc: "拠点間をつなぐポータル（W14）を建設するためのコア部品。" },
+                { name: "ウェイポイントの欠片", emoji: "📍", rarity: "rare", desc: "テレポート可能なウェイポイントをクラフトするための破片。" }
+            ]},
+            "C10": { name: "C10: 種・農業用資材 (大チェスト)", label: "作物の種 (大)", icon: "🌱", category: "農業資材", coords: [[7,9],[8,9],[7,10],[8,10]], desc: "畑に植える各種植物や木・キノコの種と、成長を促す肥料です。", slots: [
+                { name: "ハートベリーの種", emoji: "🌱", rarity: "normal", desc: "体力上限UP料理になるハートベリーの種。" },
+                { name: "爆弾パプリカの種", emoji: "🌱", rarity: "normal", desc: "移動速度UP料理になる爆弾パプリカの種。" },
+                { name: "カロープの種", emoji: "🌱", rarity: "normal", desc: "アーマーUP料理になるカロープの種。" },
+                { name: "グリマーツリーの種", emoji: "🌱", rarity: "normal", desc: "原木を採取できるグリマーツリーの植木用種。" },
+                { name: "シュルームの種", emoji: "🌱", rarity: "normal", desc: "キノコ類を無限に栽培するための種。" },
+                { name: "キノコの胞子", emoji: "🍄", rarity: "normal", desc: "菌類ブロックを発生させる胞子原料。" },
+                { name: "肥料", emoji: "💩", rarity: "normal", desc: "作物の生育を爆速にする農業用中間素材。" }
+            ]},
+            "C11": { name: "C11: 食材（肉・魚・調理用野菜） (大チェスト)", label: "魚/食材 (大)", icon: "🐟", category: "調理食材", coords: [[9,9],[10,9],[9,10],[10,10]], desc: "料理鍋（W12）に直接供給する、バフ料理の材料となる食材群です。", slots: [
+                { name: "ハートベリー", emoji: "🍓", rarity: "normal", desc: "体力上限を増強する基本食料。" },
+                { name: "爆弾パプリカ", emoji: "🫑", rarity: "normal", desc: "移動速度を一時的に大幅増加させるピリ辛食材。" },
+                { name: "カロープ", emoji: "🥔", rarity: "normal", desc: "防御力を一時的にアップさせる硬い根菜作物。" },
+                { name: "洞窟トカゲの肉", emoji: "🥩", rarity: "normal", desc: "攻撃力バフの料理になるモンスター肉。" },
+                { name: "各地の生魚", emoji: "🐟", rarity: "normal", desc: "各地の水辺で釣れる魚。" },
+                { name: "巨大キノコ", emoji: "🍄", rarity: "normal", desc: "最大体力を永続的に増加させるレアな調理素材。" }
+            ]},
+            "C12": { name: "C12: 臨時受入・整理用（ダンプ） (大チェスト)", label: "一時受入 (大)", icon: "📥", category: "一時保管", coords: [[11,9],[12,9],[11,10],[12,10]], desc: "帰還時に「とりあえず手持ちのアイテムを全部入れる」ための整理用チェストです。", slots: [
+                { name: "未仕分けの素材", emoji: "📦", rarity: "normal", desc: "冒険で適当に回収した未仕分けの土木ブロックや基本金属。" },
+                { name: "収集した貴重品", emoji: "🏺", rarity: "normal", desc: "商人に売却して古代のコインに換金するためのオブジェクト。" }
+            ]}
+        };
+
+        // 冒険準備・帰還用チェスト (E1〜E8) - 【普通の宝箱 1x1】
+        const equipChests = {
+            "E1": { name: "E1: 近接装備セットチェスト (普通チェスト)", label: "近接装備", icon: "🗡️", category: "出発準備", coords: [[4,15]], desc: "セット効果を活かした近接用の装備群を保管します。(1x1チェスト)", slots: [
+                { name: "ルーンソング (近接武器)", emoji: "🗡️", rarity: "legendary", desc: "最大HP増加、攻撃ヒット時HP回復、即死効果を持つ最強の伝説の剣。" },
+                { name: "オクタリンのダガー (近接武器)", emoji: "🗡️", rarity: "rare", desc: "攻撃速度が極めて速く、クリティカル率が高い強武器。" },
+                { name: "真紅石のヘルメット", emoji: "🪖", rarity: "rare", desc: "近接攻撃ダメージと防御力を高める頭装備。" },
+                { name: "真紅石の胸当て", emoji: "🧥", rarity: "rare", desc: "近接攻撃ダメージと最大HPを高める胴装備。" },
+                { name: "真紅石の足甲", emoji: "🧦", rarity: "rare", desc: "近接攻撃速度とアーマーを高める脚装備。" }
+            ]},
+            "E2": { name: "E2: 遠距離・魔法装備セットチェスト (普通チェスト)", label: "遠隔/魔法", icon: "🏹", category: "出発準備", coords: [[5,15]], desc: "魔法攻撃や発射速度に特化した装備一式を保管します。(1x1チェスト)", slots: [
+                { name: "ソウルシーカー (弓)", emoji: "🏹", rarity: "legendary", desc: "最強の貫通と高ダメージを誇る伝説の光の弓。" },
+                { name: "幻影のスパーク (銃)", emoji: "🔫", rarity: "epic", desc: "弾丸の連射速度が極めて速いハイテク遠距離武器。" },
+                { name: "吹雪 of 魔導書 (魔法)", emoji: "📖", rarity: "epic", desc: "敵に持続的な氷結ダメージを与える魔導書。" }
+            ]},
+            "E3": { name: "E3: 冒険用ツール・薬・たいまつ (普通チェスト)", label: "ポーション", icon: "🧪", category: "出発準備", coords: [[4,16]], desc: "たいまつやポーションなど、出発時に必ず補充する消耗品をまとめます。(1x1チェスト)", slots: [
+                { name: "超健康ポーション", emoji: "🧪", rarity: "rare", desc: "ライフを瞬時に大量回復する最高級回復薬。" },
+                { name: "マナ回復ポーション", emoji: "🧪", rarity: "rare", desc: "マナを急速に回復する魔法使い用ポーション。" },
+                { name: "たいまつ", emoji: "🕯️", rarity: "normal", desc: "暗闇を照らし、足元を確保する冒険の必需品。" }
+            ]},
+            "E4": { name: "E4: 戦闘用バフ料理チェスト (普通チェスト)", label: "バフ料理", icon: "🍱", category: "出発準備", coords: [[5,16]], desc: "料理鍋で作成した、冒険出発用の完成したバフ付き料理を保管します。(1x1チェスト)", slots: [
+                { name: "ハートベリープリン", emoji: "🍮", rarity: "normal", desc: "最大HPを一時的に＋50増加させる基本食。" },
+                { name: "激辛パプリカサラダ", emoji: "🥗", rarity: "normal", desc: "移動速度を一時的に大幅に上昇させる探索用サラダ。" }
+            ]},
+            "E5": { name: "E5: 戦利品一時プール用 (普通チェスト)", label: "一時プール", icon: "📥", category: "帰還整理", coords: [[9,15]], desc: "帰還して即座にインベントリを空にして、後で整理するための一時保管プールです。(1x1チェスト)", slots: [
+                { name: "未仕分けの戦利品", emoji: "📦", rarity: "normal", desc: "冒険で回収した未仕分けのアイテム一式。" }
+            ]},
+            "E6": { name: "E6: 換金用貴重品・ジャンクチェスト (普通チェスト)", label: "換金貴重品", icon: "🏺", category: "帰還整理", coords: [[10,15]], desc: "クラフトには一切使わない、商人に売却して古代のコインにするための貴重品です。(1x1チェスト)", slots: [
+                { name: "古代のコイン", emoji: "🪙", rarity: "normal", desc: "商人との取引に使用する世界の共通通貨。" },
+                { name: "貴重な聖杯", emoji: "🏺", rarity: "rare", desc: "出土品。商人が高値で買い取る。" }
+            ]},
+            "E7": { name: "E7: コレクション・フィギュアチェスト (普通チェスト)", label: "フィギュア", icon: "🧸", category: "帰還整理", coords: [[9,16]], desc: "鑑賞用フィギュアや、ボスのトロフィーを飾るまでの保管庫です。(1x1チェスト)", slots: [
+                { name: "スライムのフィギュア", emoji: "🧸", rarity: "normal", desc: "スライムの姿を忠実に再現した意匠フィギュア。" }
+            ]},
+            "E8": { name: "E8: ペットの卵・ペット用品チェスト (普通チェスト)", label: "ペット/卵", icon: "🥚", category: "帰還整理", coords: [[10,16]], desc: "孵化前の卵や、ペットの育成・エサをまとめます。(1x1チェスト)", slots: [
+                { name: "未確認の灰色卵", emoji: "🥚", rarity: "rare", desc: "孵化させると、戦闘ペット「サブテリア」が産まれる。" }
+            ]}
+        };
+
+        // 西翼コレクション大倉庫 (D1〜D6) - 【大きい宝箱 2x2】
+        const westVault = {
+            "D1": { name: "D1: NPC居住用・おもちゃ倉庫 (大チェスト)", label: "NPC/玩具 (大)", icon: "🚪", category: "コレクション", coords: [[0,0],[1,0],[0,1],[1,1]], desc: "商人を呼び出すための特殊アイテムや、おもちゃ類を保管します。", slots: [
+                { name: "スライムの油 (NPCアイテム)", emoji: "🧪", rarity: "rare", desc: "スライム商人を空き部屋に居住させるためのアイテム。" },
+                { name: "謎の偶像 (NPCアイテム)", emoji: "🗿", rarity: "rare", desc: "アイテム商人を空き部屋に居住させるための偶像。" },
+                { name: "おもちゃの水鉄砲", emoji: "🔫", rarity: "normal", desc: "水を発射して遊ぶための非戦闘用玩具。" }
+            ]},
+            "D2": { name: "D2: フィギュア・トロフィー大倉庫 (大チェスト)", label: "トロフィー (大)", icon: "🏆", category: "コレクション", coords: [[0,3],[1,3],[0,4],[1,4]], desc: "各バイオームのモブフィギュアやボスの記念トロフィーを保管します。", slots: [
+                { name: "ケイヴリングのフィギュア", emoji: "🧸", rarity: "rare", desc: "ケイヴリングの姿をした木製の小さなフィギュア。" },
+                { name: "マルガズのトロフィー", emoji: "🏆", rarity: "epic", desc: "堕落した黒属マルガズを討伐した記念トロフィー。" }
+            ]},
+            "D3": { name: "D3: 見た目衣装・コレクション防具 (大チェスト)", label: "コレクション衣装 (大)", icon: "👘", category: "コレクション", coords: [[0,6],[1,6],[0,7],[1,7]], desc: "防御性能はなく、純粋なコレクション用・見た目用の衣装を保管します。", slots: [
+                { name: "ウェディングドレス", emoji: "👗", rarity: "rare", desc: "純白の美しいドレス。見た目装備。" },
+                { name: "タキシードジャケット", emoji: "🧥", rarity: "rare", desc: "仕立ての良い黒いタキシード。見た目装備。" }
+            ]},
+            "D4": { name: "D4: 楽器・楽譜・音響デポ (大チェスト)", label: "楽器/音響 (大)", icon: "🎸", category: "コレクション", coords: [[0,9],[1,9],[0,10],[1,10]], desc: "合奏可能な楽器類やオルゴール、楽譜、スピーカーを保管します。", slots: [
+                { name: "洞窟のオカリナ (楽器)", emoji: "🎽", rarity: "rare", desc: "美しい音色を奏でられる、基本の管楽器。" },
+                { name: "ケイヴリングの竪琴 (楽器)", emoji: "🪕", rarity: "rare", desc: "弦を弾いて美しい和音を出せる弦楽器。" }
+            ]},
+            "D5": { name: "D5: シーズン限定(春節・旧正月)倉庫 (大チェスト)", label: "イベント(春) (大)", icon: "🏮", category: "コレクション", coords: [[0,13],[1,13],[0,14],[1,14]], desc: "旧正月や春のイベントで獲得した限定家具や飾りをまとめます。", slots: [
+                { name: "春節の赤い提灯 (家具)", emoji: "🏮", rarity: "rare", desc: "美しい赤い光を放つ、春節限定の装飾提灯。" }
+            ]},
+            "D6": { name: "D6: シーズン限定(冬・ハロウィン)倉庫 (大チェスト)", label: "イベント(冬) (大)", icon: "🎄", category: "コレクション", coords: [[0,15],[1,15],[0,16],[1,16]], desc: "クリスマスやハロウィンなどの冬期イベント限定の装飾品です。", slots: [
+                { name: "クリスマスの靴下 (装飾)", emoji: "🧦", rarity: "normal", desc: "クリスマス限定の壁掛け用装飾ソックス。" }
+            ]}
+        };
+
+        // 東翼建築・家具倉庫 (B1〜B6) - 【大きい宝箱 2x2】
+        const eastVault = {
+            "B1": { name: "B1: 装飾・建材ブロック (土・石・原生林系/大チェスト)", label: "建材(初中期) (大)", icon: "🧱", category: "建築建材", coords: [[15,0],[16,0],[15,1],[16,1]], desc: "初期〜中期のバイオームの壁/床ブロック、塗装ブロックの余剰品です。", slots: [
+                { name: "塗装された木製の壁", emoji: "🧱", rarity: "normal", desc: "ペイントした建築用の木製の壁。" },
+                { name: "草の壁 (原生林)", emoji: "🧱", rarity: "normal", desc: "原生林バイオームの草むらのような壁ブロック。" }
+            ]},
+            "B2": { name: "B2: 装飾・建材ブロック (海・砂漠・最上位系/大チェスト)", label: "建材(後期) (大)", icon: "🏛️", category: "建築建材", coords: [[15,3],[16,3],[15,4],[16,4]], desc: "後半バイオームで手に入る、装飾価値の高い特殊ブロックや大理石です。", slots: [
+                { name: "大理石の床", emoji: "🔲", rarity: "normal", desc: "白く美しい大理石でできた高級な床ブロック。" },
+                { name: "ネオンの床 (光輝)", emoji: "🔳", rarity: "rare", desc: "光輝の辺境で獲得する、暗闇で発光する現代的な床。" }
+            ]},
+            "B3": { name: "B3: インテリア家具 (ベッド・椅子・机/大チェスト)", label: "インテリア家具 (大)", icon: "🪑", category: "建築建材", coords: [[15,6],[16,6],[15,7],[16,7]], desc: "部屋作りに使用する、様々な種類のベッド、机、椅子などの家具一式です。", slots: [
+                { name: "石の豪華テーブル", emoji: "🪑", rarity: "normal", desc: "石製の非常に大きく頑丈なダイニングテーブル。" },
+                { name: "アゼオスのベッド", emoji: "🛏️", rarity: "rare", desc: "原生林の木々でデザインされた、自然豊かなベッド。" }
+            ]},
+            "B4": { name: "B4: 照明器具・絨毯・装飾絵画 (大チェスト)", label: "照明/ラグ (大)", icon: "🖼️", category: "建築建材", coords: [[15,9],[16,9],[15,10],[16,10]], desc: "部屋を彩る燭台、発光クリスタル、各種ラグ、じゅうたん、壁掛けの絵画です。", slots: [
+                { name: "ネオンライト (照明)", emoji: "💡", rarity: "rare", desc: "SF風の明るい光を放つチューブ型のネオン照明。" },
+                { name: "豪華な敷物 (赤)", emoji: "🟥", rarity: "normal", desc: "部屋の床に高級感を与えるカーペット。" }
+            ]},
+            "B5": { name: "B5: 扉・フェンス・窓・装飾ゲート (大チェスト)", label: "扉/フェンス (大)", icon: "🚪", category: "建築建材", coords: [[15,13],[16,13],[15,14],[16,14]], desc: "各種素材でできたドア、装飾用のフェンスや窓、ゲート類です。", slots: [
+                { name: "鉄の補強ドア", emoji: "🚪", rarity: "normal", desc: "非常に頑丈な鉄製の自動開閉ドア。" }
+            ]},
+            "B6": { name: "B6: 園芸・植物装飾・水生観賞植物 (大チェスト)", label: "園芸/水生 (大)", icon: "🌿", category: "建築建材", coords: [[15,15],[16,15],[15,16],[16,16]], desc: "観賞用の巨大キノコの飾り、植木鉢、サンゴの飾り、蓮の葉などです。", slots: [
+                { name: "観賞用巨大キノコ", emoji: "🍄", rarity: "normal", desc: "光を放つ巨大なキノコの装飾オブジェ。" }
+            ]}
+        };
+
+        // マネキン (M1, M2)
+        const mannequins = {
+            "M1": { name: "M1: 採掘特化セット (マネキン)", coords: [[4,13]], icon: "🤖", category: "展示マネキン", desc: "【採掘速度・採掘ダメージ最大化ビルド】", armor: [
+                { name: "真紅石のヘルメット", emoji: "🪖", desc: "採掘ダメージ+12%の頭防具。" },
+                { name: "真紅石の胸当て", emoji: "🧥", desc: "採掘ダメージ+15%の胴防具。" },
+                { name: "真紅石の足甲", emoji: "🧦", desc: "採掘速度+8%の脚防具。" },
+                { name: "古代のツルハシ (武器枠)", emoji: "⛏️", desc: "圧倒的な採掘力を持つツルハシ。" }
+            ]},
+            "M2": { name: "M2: 移動速度特化セット (マネキン)", coords: [[5,13]], icon: "🤖", category: "展示マネキン", desc: "【拠点整理・マップ探索爆速ビルド】", armor: [
+                { name: "洞窟の羽帽子", emoji: "👒", desc: "移動速度+5%の頭防具。" },
+                { name: "ハンターのジャケット", emoji: "🧥", desc: "移動速度+7%の胴防具。" },
+                { name: "ハンターのブーツ", emoji: "🧦", desc: "移動速度+9%の脚防具。" },
+                { name: "迅速の羽 (オフハンド)", emoji: "🪶", desc: "ダッシュ速度を大きく強化するオフハンド。" }
+            ]}
+        };
+
+        // 設備 (W1〜W20)
+        const benches = {
+            "W1": { name: "W1: ボート用作業台", type: "bench", coord: [5,7], category: "特殊・移動", icon: "⛵", desc: "水上探索用ボートなどのクラフト。" },
+            "W2": { name: "W2: ゴーカート用作業台", type: "bench", coord: [6,7], category: "特殊・移動", icon: "🏎️", desc: "砂漠の高速移動用ゴーカート等のクラフト。" },
+            "W3": { name: "W3: ポータル", type: "bench", coord: [7,7], category: "特殊・移動", icon: "🌀", desc: "他拠点との間のファストトラベル装置。" },
+            "W4": { name: "W4: ペインターのテーブル", type: "bench", coord: [8,7], category: "建築装飾", icon: "🎨", desc: "チェストやブロックの色染めブラシの製作。" },
+            "W5": { name: "W5: 自由枠", type: "bench", coord: [9,7], category: "イベント/その他", icon: "🎁", desc: "限定イベント等の作業台用のフリースペース。" },
+            "W6": { name: "W6: 電気台", type: "bench", coord: [5,6], category: "自動化・電気", icon: "💡", desc: "電線や論理スイッチなどの基本回路工作。" },
+            "W7": { name: "W7: 自動化テーブル", type: "bench", coord: [6,6], category: "自動化・電気", icon: "🤖", desc: "コンベアベルトやロボットアームなどの工業パーツ。" },
+            "W8": { name: "W8: 鉄道用鍛冶場", type: "bench", coord: [7,6], category: "特殊・移動", icon: "🚂", desc: "線路（レール）や自動トロッコを鍛造します。" },
+            "W9": { name: "W9: 家畜用作業台", type: "bench", coord: [8,6], category: "牧畜", icon: "🐏", desc: "家畜用ケージ、自動搾乳機などの牧畜用品。" },
+            "W10": { name: "W10: 釣り用作業台", type: "bench", coord: [9,6], category: "釣り", icon: "🎣", desc: "釣竿、エサ、バイオーム特効ルアーを製作。" },
+            "W11": { name: "W11: 錬金台 / 実験台", type: "bench", coord: [5,4], category: "バフ・薬品", icon: "🧪", desc: "回復ポーションや各種戦闘耐性薬を調合します。" },
+            "W12": { name: "W12: テーブルソー", type: "bench", coord: [6,4], category: "素材加工", icon: "🪚", desc: "原木を木工用パーツや「板」に加工します。" },
+            "W13": { name: "W13: 織機", type: "bench", coord: [7,4], category: "素材加工", icon: "🧶", desc: "繊維や羊毛からスレッド、布地を紡ぎ、皮装備を製作。" },
+            "W14": { name: "W14: ジュエリーの作業台", type: "bench", coord: [8,4], category: "装備クラフト", icon: "💍", desc: "ジェムを加工して能力付きの指輪やネックレスを作成。" },
+            "W15": { name: "W15: 大工のテーブル", type: "bench", coord: [9,4], category: "建築装飾", icon: "🪑", desc: "拠点作り用の各種デザイン家具をクラフト。" },
+            "W16": { name: "W16: ボート予備枠", type: "bench", coord: [5,3], category: "特殊・移動", icon: "⛵", desc: "予備空きマス。" },
+            "W17": { name: "W17: 自由予備枠", type: "bench", coord: [6,3], category: "その他", icon: "🎁", desc: "予備空きマス。" },
+            "W18": { name: "W18: ソラライトの作業台", type: "bench", coord: [7,3], category: "基本クラフト", icon: "🛠️", desc: "最上位の作業台。ツールや基本装備の最終レシピをクラフト。" },
+            "W19": { name: "W19: ソラライトの金床", type: "bench", coord: [8,3], category: "装備クラフト", icon: "🔨", desc: "最高クラスのソラライト武器・盾・防具を鍛造します。" },
+            "W20": { name: "W20: アップグレード台", type: "bench", coord: [9,3], category: "装備強化", icon: "⚡", desc: "インゴットと宝石を使って、装備の性能を最大強化します。" },
+            "W17_Vault": { name: "帰還解体用：回収と修理の台", type: "bench", coord: [9,13], category: "装備メンテ", icon: "🔧", desc: "【帰還動線の要】冒険から帰還して即座に不要装備を解体リサイクルしてスタック可能な素材に分解します。" }
+        };
+
+        // アイテム簡易検索用データベース
+        const itemDatabase = {
+            "木材": "C1", "厚板": "C1", "コーラルウッド": "C1", "サンゴの厚板": "C1", "光の木材": "C1", "繊維": "C1",
+            "土の壁": "C2", "土の地面": "C2", "粘土の壁": "C2", "粘土の地面": "C2", "石の壁": "C2", "石の地面": "C2",
+            "砂の壁": "C2", "砂の地面": "C2", "大理石": "C2", "溶岩石": "C2", "結晶の壁": "C2", "ガラス": "C2",
+            "銅の鉱石": "C3", "銅のインゴット": "C3", "スズの鉱石": "C3", "スズのインゴット": "C3", "鉄の鉱石": "C3", "鉄のインゴット": "C3", "青銅のバー": "C3", "機械の部品": "C3",
+            "金の鉱石": "C4", "金のインゴット": "C4", "真紅石の鉱石": "C4", "真紅石のインゴット": "C4", "オクタリンの鉱石": "C4", "オクタリンのインゴット": "C4",
+            "ガラクサイトの鉱石": "C4", "ガラクサイト of インゴット": "C4", "ソラライトの鉱石": "C4", "ソラライトのインゴット": "C4", "パンドリウム": "C4", "リラサイト": "C4",
+            "古代の宝石": "C4", "ヒスイ": "C4", "サファイア": "C4", "ルビー": "C4",
+            "電線": "C5", "電気回路": "C5", "アーム": "C5", "コンベア": "C5", "レバー": "C5", "スイッチ": "C5", "圧力板": "C5",
+            "スライム": "C6", "毒のスライム": "C6", "すべりやすいスライム": "C6", "マグマスライム": "C6", "毒の液": "C6", "溶岩の液": "C6", "発光チューリップ": "C6",
+            "羊毛": "C7", "おだんご虫プレート": "C7", "毛皮": "C7", "毛糸": "C7", "綿花": "C7", "キャンバス": "C7", "なめし革": "C7",
+            "ガラクタ部品": "C8", "細胞質": "C8", "石灰化した貝": "C8", "破損した合金": "C8", "骨": "C8", "虫の殻": "C8", "トゲ": "C8",
+            "欠けた刃": "C9", "透き通った宝石": "C9", "停止プロトコル": "C9", "異常レポート": "C9", "上書き転写": "C9", "交信の宝石": "C9", "ポータルの核": "C9",
+            "種": "C10", "胞子": "C10", "肥料": "C10",
+            "ハートベリー": "C11", "爆弾パプリカ": "C11", "カロープ": "C11", "トカゲの肉": "C11", "幼虫の肉": "C11", "生魚": "C11",
+            "ルーンソング": "E1", "オクタリンのダガー": "E1", "真紅石のヘルメット": "E1", "真紅石の胸当て": "E1", "真紅石の足甲": "E1",
+            "ソウルシーカー": "E2", "幻影のスパーク": "E2", "吹雪の魔導書": "E2", "ファイアボールの杖": "E2", "織り手の帽子": "E2",
+            "健康ポーション": "E3", "回復薬": "E3", "ポーション": "E3", "たいまつ": "E3", "鍵": "E3", "召喚偶像": "E3",
+            "プリン": "E4", "サラダ": "E4", "ロースト": "E4", "寿司": "E4",
+            "コイン": "E6", "スプーン": "E6", "聖杯": "E6", "おもちゃ": "D1", "フィギュア": "D2", "トロフィー": "D2",
+            "ドレス": "D3", "タキシード": "D3", "オカリナ": "D4", "竪琴": "D4", "ハープ": "D4", "提灯": "D5",
+            "クリスマス": "D6", "ハサミ": "C7", "バケツ": "C6", "卵": "E8",
+            "ベッド": "B3", "椅子": "B3", "テーブル": "B3", "ネオンライト": "B4", "じゅうたん": "B4", "絵画": "B4",
+            "ドア": "B5", "ゲート": "B5", "フェンス": "B5", "キノコの飾り": "B6", "植木鉢": "B6", "蓮の葉": "B6",
+            "木の柱": "B1", "木のフェンス": "B5"
+        };
+
+        const cellRegistry = {};
+        
+        for (const [key, val] of Object.entries(chests)) {
+            val.coords.forEach(coord => {
+                cellRegistry[`${coord[0]},${coord[1]}`] = { type: 'chest', id: key, data: val };
+            });
+        }
+        for (const [key, val] of Object.entries(benches)) {
+            if (key === "W17_Vault") {
+                cellRegistry[`${val.coord[0]},${val.coord[1]}`] = { type: 'bench', id: 'W17', data: val };
+            } else {
+                cellRegistry[`${val.coord[0]},${val.coord[1]}`] = { type: 'bench', id: key, data: val };
+            }
+        }
+        for (const [key, val] of Object.entries(equipChests)) {
+            const type = key.match(/[1-4]/) ? 'outbound-chest' : 'inbound-chest';
+            val.coords.forEach(coord => {
+                cellRegistry[`${coord[0]},${coord[1]}`] = { type: type, id: key, data: val };
+            });
+        }
+        for (const [key, val] of Object.entries(westVault)) {
+            val.coords.forEach(coord => {
+                cellRegistry[`${coord[0]},${coord[1]}`] = { type: 'west-chest', id: key, data: val };
+            });
+        }
+        for (const [key, val] of Object.entries(eastVault)) {
+            val.coords.forEach(coord => {
+                cellRegistry[`${coord[0]},${coord[1]}`] = { type: 'east-chest', id: key, data: val };
+            });
+        }
+        for (const [key, val] of Object.entries(mannequins)) {
+            val.coords.forEach(coord => {
+                cellRegistry[`${coord[0]},${coord[1]}`] = { type: 'mannequin', id: key, data: val };
+            });
+        }
+
+        const mapGrid = document.getElementById('map-grid');
+        const detailPanel = document.getElementById('detail-panel');
+        const simOverlay = document.getElementById('sim-overlay');
+        const previewBox = document.getElementById('item-preview-box');
+        const searchInput = document.getElementById('search-input');
+        const searchResults = document.getElementById('search-results');
+
+        let activeSimBench = null;
+
+        function initGrid() {
+            mapGrid.innerHTML = '';
+            
+            for (let y = 0; y < 19; y++) {
+                for (let x = 0; x < 17; x++) {
+                    const cellType = mapData[y][x];
+                    const cellKey = `${x},${y}`;
+                    const registryInfo = cellRegistry[cellKey];
+                    
+                    const cellEl = document.createElement('div');
+                    cellEl.classList.add('grid-cell');
+                    cellEl.dataset.x = x;
+                    cellEl.dataset.y = y;
+                    cellEl.id = `cell-${x}-${y}`;
+                    
+                    if (cellType === 2 && registryInfo) {
+                        cellEl.classList.add('cell-chest');
+                        const coords = registryInfo.data.coords;
+                        if (coords[0][0] === x && coords[0][1] === y) {
+                            cellEl.innerHTML = `<span class="emoji" style="font-size:1rem;">🧰</span><span style="font-size:0.4rem; font-weight:700;">大</span>`;
+                        }
+                    } else if (cellType === 3 && registryInfo) {
+                        cellEl.classList.add('cell-bench');
+                        cellEl.innerHTML = `<span style="font-size:0.95rem; margin-bottom:1px;">${registryInfo.data.icon}</span><span style="font-size:0.4rem; font-weight:normal">${registryInfo.id}</span>`;
+                    } else if (cellType === 4) {
+                        cellEl.classList.add('cell-wall');
+                        if (x === 8 && y === 11) {
+                            cellEl.classList.remove('cell-wall');
+                            cellEl.classList.add('cell-path');
+                        } else {
+                            cellEl.textContent = '■';
+                        }
+                    } else if (cellType === 5 && registryInfo) {
+                        cellEl.classList.add('cell-mannequin');
+                        cellEl.innerHTML = `<span style="font-size:0.95rem; margin-bottom:1px;">${registryInfo.data.icon}</span><span style="font-size:0.4rem;">${registryInfo.id}</span>`;
+                    } else if (cellType === 7 && registryInfo) {
+                        cellEl.classList.add('cell-outbound-chest');
+                        cellEl.innerHTML = `<span style="font-size:0.75rem; margin-bottom:1px;">📦</span><span style="font-size:0.35rem; scale:0.9;">並</span>`;
+                    } else if (cellType === 8 && registryInfo) {
+                        cellEl.classList.add('cell-inbound-chest');
+                        cellEl.innerHTML = `<span style="font-size:0.75rem; margin-bottom:1px;">📦</span><span style="font-size:0.35rem; scale:0.9;">並</span>`;
+                    } else if (cellType === 9 && registryInfo) {
+                        cellEl.classList.add('cell-west-chest');
+                        const coords = registryInfo.data.coords;
+                        if (coords[0][0] === x && coords[0][1] === y) {
+                            cellEl.innerHTML = `<span class="emoji" style="font-size:1rem;">🧰</span><span style="font-size:0.4rem; font-weight:700;">大</span>`;
+                        }
+                    } else if (cellType === 10 && registryInfo) {
+                        cellEl.classList.add('cell-east-chest');
+                        const coords = registryInfo.data.coords;
+                        if (coords[0][0] === x && coords[0][1] === y) {
+                            cellEl.innerHTML = `<span class="emoji" style="font-size:1rem;">🧰</span><span style="font-size:0.4rem; font-weight:700;">大</span>`;
+                        }
+                    } else if (cellType === 1) {
+                        cellEl.classList.add('cell-path');
+                        if (x === 8 && y === 18) {
+                            cellEl.innerHTML = `<span style="font-size:0.75rem; color:#10b981;">🚪</span>`;
+                        }
+                    } else {
+                        cellEl.classList.add('cell-free');
+                    }
+
+                    cellEl.addEventListener('click', () => handleCellClick(x, y));
+                    mapGrid.appendChild(cellEl);
+                }
+            }
+        }
+
+        // 検索ロジック (サジェスト + 自動推測)
+        searchInput.addEventListener('input', (e) => {
+            const query = e.target.value.trim().toLowerCase();
+            if (!query) {
+                searchResults.style.display = 'none';
+                clearSearchHighlight();
+                return;
+            }
+
+            const matches = [];
+            
+            for (const [itemName, targetChestId] of Object.entries(itemDatabase)) {
+                if (itemName.toLowerCase().includes(query)) {
+                    matches.push({ name: itemName, chestId: targetChestId, type: 'exact' });
+                }
+            }
+
+            // ルールベースの推測 (辞書にない場合)
+            if (matches.length === 0) {
+                let inferredChestId = null;
+                let reason = "";
+
+                if (query.includes("壁") || query.includes("床") || query.includes("地面") || query.includes("レンガ") || query.includes("ブロック") || query.includes("柱") || query.includes("梁") || query.includes("階段")) {
+                    inferredChestId = "B1"; reason = "土・石壁・建材デポ";
+                    if (query.includes("海") || query.includes("大理石") || query.includes("ネオン") || query.includes("空虚") || query.includes("古代") || query.includes("砂漠")) {
+                        inferredChestId = "B2"; reason = "上位バイオーム建材デポ";
+                    }
+                } else if (query.includes("ドア") || query.includes("扉") || query.includes("フェンス") || query.includes("ゲート") || query.includes("柵") || query.includes("窓")) {
+                    inferredChestId = "B5"; reason = "扉・窓・フェンスデポ";
+                } else if (query.includes("ベッド") || query.includes("椅子") || query.includes("机") || query.includes("テーブル") || query.includes("チェスト") || query.includes("宝箱") || query.includes("箱") || query.includes("ボックス") || query.includes("クローゼット") || query.includes("ドレッサー") || query.includes("鏡")) {
+                    inferredChestId = "B3"; reason = "インテリア家具デポ";
+                } else if (query.includes("ライト") || query.includes("ランプ") || query.includes("ランタン") || query.includes("照明") || query.includes("絵") || query.includes("額縁") || query.includes("ラグ") || query.includes("じゅうたん") || query.includes("敷物") || query.includes("燭台") || query.includes("クリスタル")) {
+                    inferredChestId = "B4"; reason = "照明・絨毯デポ";
+                } else if (query.includes("キノコ") || query.includes("花") || query.includes("植物") || query.includes("サンゴ") || query.includes("観賞") || query.includes("植木鉢") || query.includes("蓮") || query.includes("芝")) {
+                    inferredChestId = "B6"; reason = "園芸・観賞植物デポ";
+                } else if (query.includes("種") || query.includes("胞子")) {
+                    inferredChestId = "C10"; reason = "種・農業資材";
+                } else if (query.includes("プリン") || query.includes("サラダ") || query.includes("料理") || query.includes("寿司") || query.includes("スープ") || query.includes("ロースト") || query.includes("焼き") || query.includes("ディップ")) {
+                    inferredChestId = "E4"; reason = "出発用バフ料理";
+                } else if (query.includes("ポーション") || query.includes("回復") || query.includes("薬") || query.includes("たいまつ") || query.includes("偶像") || query.includes("鍵")) {
+                    inferredChestId = "E3"; reason = "冒険ポーション・消耗品";
+                } else if (query.includes("肉") || query.includes("魚") || query.includes("ベリー") || query.includes("パプリカ") || query.includes("チーズ")) {
+                    inferredChestId = "C11"; reason = "調理用食材";
+                } else if (query.includes("木") || query.includes("繊維") || query.includes("板")) {
+                    inferredChestId = "C1"; reason = "木材・繊維素材";
+                } else if (query.includes("インゴット") || query.includes("鉱石") || query.includes("バー") || query.includes("銅") || query.includes("スズ") || query.includes("鉄") || query.includes("青銅") || query.includes("金") || query.includes("真紅") || query.includes("オクタ") || query.includes("ガラク") || query.includes("ソラ") || query.includes("パンド") || query.includes("リラ")) {
+                    inferredChestId = "C4"; reason = "後期金属・宝石";
+                    if (query.includes("銅") || query.includes("スズ") || query.includes("鉄") || query.includes("青銅")) {
+                        inferredChestId = "C3"; reason = "初期金属・パーツ";
+                    }
+                } else if (query.includes("フィギュア") || query.includes("トロフィー") || query.includes("記念")) {
+                    inferredChestId = "D2"; reason = "フィギュア・記念品";
+                } else if (query.includes("卵")) {
+                    inferredChestId = "E8"; reason = "ペットの卵・用品";
+                } else if (query.includes("コイン") || query.includes("骨董") || query.includes("スプーン") || query.includes("聖杯") || query.includes("歯車") || query.includes("頭骨") || query.includes("貴重品") || query.includes("ジャンク")) {
+                    inferredChestId = "E6"; reason = "換金用ジャンク品";
+                } else if (query.includes("ボート") || query.includes("カート") || query.includes("トロッコ") || query.includes("レール") || query.includes("線路")) {
+                    inferredChestId = "C5"; reason = "電気・自動化・乗り物";
+                } else if (query.includes("リング") || query.includes("指輪") || query.includes("ネックレス") || query.includes("アミュレット") || query.includes("羽")) {
+                    inferredChestId = "E1"; reason = "装備・アクセサリー";
+                } else if (query.includes("剣") || query.includes("ダガー") || query.includes("防具") || query.includes("甲") || query.includes("盾") || query.includes("ツルハシ") || query.includes("シャベル")) {
+                    inferredChestId = "E1"; reason = "近接装備/ツール";
+                } else if (query.includes("弓") || query.includes("銃") || query.includes("魔導書") || query.includes("杖")) {
+                    inferredChestId = "E2"; reason = "遠距離・魔法装備";
+                }
+
+                if (inferredChestId) {
+                    matches.push({ name: `「${e.target.value}」の予測`, chestId: inferredChestId, type: 'inferred', reason: reason });
+                }
+            }
+
+            if (matches.length > 0) {
+                searchResults.innerHTML = '';
+                matches.forEach(item => {
+                    const el = document.createElement('div');
+                    el.classList.add('search-result-item');
+                    
+                    const labelText = item.type === 'inferred' ? `${item.name} (${item.reason})` : item.name;
+                    el.innerHTML = `
+                        <span>${labelText}</span>
+                        <span class="item-meta">チェスト ${item.chestId} へ</span>
+                    `;
+                    el.addEventListener('click', () => {
+                        triggerHighlight(item.chestId);
+                        searchResults.style.display = 'none';
+                        searchInput.value = item.name;
+                    });
+                    searchResults.appendChild(el);
+                });
+                searchResults.style.display = 'block';
+            } else {
+                searchResults.style.display = 'none';
+            }
+        });
+
+        function triggerHighlight(chestId) {
+            clearSearchHighlight();
+            clearSimulation();
+
+            let targetChestData = chests[chestId] || equipChests[chestId] || westVault[chestId] || eastVault[chestId];
+            if (!targetChestData) return;
+
+            targetChestData.coords.forEach(coord => {
+                const cellEl = document.getElementById(`cell-${coord[0]}-${coord[1]}`);
+                if (cellEl) {
+                    cellEl.classList.add('search-highlight');
+                }
+            });
+
+            if (chests[chestId]) showChestDetails(targetChestData);
+            if (equipChests[chestId]) showEquipChestDetails(targetChestData);
+            if (westVault[chestId]) showWestVaultDetails(targetChestData);
+            if (eastVault[chestId]) showEastVaultDetails(targetChestData);
+        }
+
+        function clearSearchHighlight() {
+            const cells = document.querySelectorAll('.grid-cell');
+            cells.forEach(cell => {
+                cell.classList.remove('search-highlight');
+            });
+        }
+
+        function handleCellClick(x, y) {
+            const registryInfo = cellRegistry[`${x},${y}`];
+            const cellType = mapData[y][x];
+            previewBox.style.display = 'none';
+            clearSearchHighlight();
+
+            if (cellType === 3 && registryInfo) {
+                const clickedBenchId = registryInfo.id;
+                if (activeSimBench === clickedBenchId) {
+                    clearSimulation();
+                } else {
+                    runSimulation(registryInfo.data);
+                }
+                showBenchDetails(registryInfo.data);
+            } 
+            else if (cellType === 2 && registryInfo) {
+                clearSimulation();
+                showChestDetails(registryInfo.data);
+            } 
+            else if ((cellType === 7 || cellType === 8) && registryInfo) {
+                clearSimulation();
+                showEquipChestDetails(registryInfo.data);
+            } 
+            else if (cellType === 9 && registryInfo) {
+                clearSimulation();
+                showWestVaultDetails(registryInfo.data);
+            } 
+            else if (cellType === 10 && registryInfo) {
+                clearSimulation();
+                showEastVaultDetails(registryInfo.data);
+            } 
+            else if (cellType === 5 && registryInfo) {
+                clearSimulation();
+                showMannequinDetails(registryInfo.data);
+            } 
+            else if (cellType === 1) {
+                clearSimulation();
+                showPathDetails(x, y);
+            } 
+            else if (cellType === 4) {
+                clearSimulation();
+                showWallDetails();
+            }
+            else {
+                clearSimulation();
+                showFreeDetails(x, y);
+            }
+        }
+
+        function runSimulation(benchData) {
+            activeSimBench = benchData.name.split(':')[0];
+            simOverlay.style.display = 'block';
+            const benchX = benchData.coord[0];
+            const benchY = benchData.coord[1];
+            const cells = document.querySelectorAll('.grid-cell');
+
+            cells.forEach(cell => {
+                const cx = parseInt(cell.dataset.x);
+                const cy = parseInt(cell.dataset.y);
+                const cellType = mapData[cy][cx];
+                const registryInfo = cellRegistry[`${cx},${cy}`];
+                
+                if (cellType === 3 && registryInfo && registryInfo.id === activeSimBench) {
+                    cell.classList.add('selected-bench');
+                    cell.classList.remove('range-out');
+                    return;
+                }
+                
+                const distToTile = Math.sqrt(Math.pow(cx - benchX, 2) + Math.pow(cy - benchY, 2));
+                
+                if (distToTile <= 10.2) {
+                    cell.classList.add('range-in');
+                    cell.classList.remove('range-out');
+                } else {
+                    cell.classList.remove('range-in');
+                    cell.classList.add('range-out');
+                }
+            });
+        }
+
+        function clearSimulation() {
+            activeSimBench = null;
+            simOverlay.style.display = 'none';
+            const cells = document.querySelectorAll('.grid-cell');
+            cells.forEach(cell => {
+                cell.classList.remove('range-in');
+                cell.classList.remove('range-out');
+                cell.classList.remove('selected-bench');
+            });
+        }
+
+        function showChestDetails(chestData) {
+            let slotsHtml = '';
+            let listHtml = '<div style="margin-top:1rem; border-top:1px solid rgba(255,255,255,0.1); padding-top:1rem;"><h4 style="font-size:0.9rem; color:var(--primary); margin-bottom:0.75rem;">📋 格納アイテム一覧 (クリックで詳細)</h4><div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">';
+            
+            for (let i = 0; i < 36; i++) {
+                const item = chestData.slots[i];
+                if (item) {
+                    slotsHtml += `
+                        <div class="inventory-slot occupied slot-${item.rarity}" 
+                             title="${item.name}"
+                             onclick="showItemPreview('${item.name.replace(/'/g, "\\'")}', '${item.emoji}', '${item.rarity}', '${item.desc.replace(/'/g, "\\'")}')">
+                            <span class="slot-icon">${item.emoji || '📦'}</span>
+                        </div>
+                    `;
+                    listHtml += `
+                        <div class="text-list-item"
+                             onclick="showItemPreview('${item.name.replace(/'/g, "\\'")}', '${item.emoji}', '${item.rarity}', '${item.desc.replace(/'/g, "\\'")}')">
+                            <span>${item.emoji}</span>
+                            <span style="border-bottom:1px dashed rgba(255,255,255,0.15);">${item.name}</span>
+                        </div>
+                    `;
+                } else {
+                    slotsHtml += `
+                        <div class="inventory-slot" style="opacity: 0.25;">
+                            <span class="slot-icon" style="font-size:0.8rem; opacity:0.15;">✖</span>
+                        </div>
+                    `;
+                }
+            }
+            listHtml += '</div></div>';
+
+            detailPanel.innerHTML = `
+                <div class="panel-header">
+                    <div>
+                        <div class="panel-subtitle">Crafting Chest Storage</div>
+                        <div class="panel-title">${chestData.name}</div>
+                    </div>
+                    <span class="item-category-tag">${chestData.category}</span>
+                </div>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.25rem;">
+                    ${chestData.desc} (容量: 36スロット・クラフト連携可能)
+                </p>
+                <div class="chest-inventory-title"><span>宝箱インベントリ (36スロット)</span></div>
+                <div class="inventory-grid">${slotsHtml}</div>
+                ${listHtml}
+            `;
+        }
+
+        function showEquipChestDetails(chestData) {
+            let slotsHtml = '';
+            let listHtml = '<div style="margin-top:1rem; border-top:1px solid rgba(255,255,255,0.1); padding-top:1rem;"><h4 style="font-size:0.9rem; color:var(--primary); margin-bottom:0.75rem;">📋 収納アイテム一覧 (クリックで詳細)</h4><div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">';
+            
+            for (let i = 0; i < 36; i++) {
+                const item = chestData.slots[i];
+                if (item) {
+                    slotsHtml += `
+                        <div class="inventory-slot occupied slot-${item.rarity}" 
+                             title="${item.name}"
+                             onclick="showItemPreview('${item.name.replace(/'/g, "\\'")}', '${item.emoji}', '${item.rarity}', '${item.desc.replace(/'/g, "\\'")}')">
+                            <span class="slot-icon">${item.emoji || '🛡️'}</span>
+                        </div>
+                    `;
+                    listHtml += `
+                        <div class="text-list-item"
+                             onclick="showItemPreview('${item.name.replace(/'/g, "\\'")}', '${item.emoji}', '${item.rarity}', '${item.desc.replace(/'/g, "\\'")}')">
+                            <span>${item.emoji}</span>
+                            <span style="border-bottom:1px dashed rgba(255,255,255,0.15);">${item.name}</span>
+                        </div>
+                    `;
+                } else {
+                    slotsHtml += `
+                        <div class="inventory-slot" style="opacity: 0.25;">
+                            <span class="slot-icon" style="font-size:0.8rem; opacity:0.15;">✖</span>
+                        </div>
+                    `;
+                }
+            }
+            listHtml += '</div></div>';
+
+            detailPanel.innerHTML = `
+                <div class="panel-header">
+                    <div>
+                        <div class="panel-subtitle">Adventure Outbound/Inbound</div>
+                        <div class="panel-title">${chestData.name}</div>
+                    </div>
+                    <span class="item-category-tag">${chestData.category}</span>
+                </div>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.25rem;">
+                    ${chestData.desc} (容量: 36スロット)
+                </p>
+                <div class="chest-inventory-title"><span>宝箱インベントリ (36スロット)</span></div>
+                <div class="inventory-grid">${slotsHtml}</div>
+                ${listHtml}
+            `;
+        }
+
+        function showWestVaultDetails(chestData) {
+            let slotsHtml = '';
+            let listHtml = '<div style="margin-top:1rem; border-top:1px solid rgba(255,255,255,0.1); padding-top:1rem;"><h4 style="font-size:0.9rem; color:var(--tile-west-vault); margin-bottom:0.75rem;">📋 コレクション・アーカイブ一覧 (クリックで詳細)</h4><div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">';
+            
+            for (let i = 0; i < 36; i++) {
+                const item = chestData.slots[i];
+                if (item) {
+                    slotsHtml += `
+                        <div class="inventory-slot occupied slot-${item.rarity}" 
+                             title="${item.name}"
+                             onclick="showItemPreview('${item.name.replace(/'/g, "\\'")}', '${item.emoji}', '${item.rarity}', '${item.desc.replace(/'/g, "\\'")}')">
+                            <span class="slot-icon">${item.emoji || '🧸'}</span>
+                        </div>
+                    `;
+                    listHtml += `
+                        <div class="text-list-item"
+                             onclick="showItemPreview('${item.name.replace(/'/g, "\\'")}', '${item.emoji}', '${item.rarity}', '${item.desc.replace(/'/g, "\\'")}')">
+                            <span>${item.emoji}</span>
+                            <span style="border-bottom:1px dashed rgba(255,255,255,0.15);">${item.name}</span>
+                        </div>
+                    `;
+                } else {
+                    slotsHtml += `
+                        <div class="inventory-slot" style="opacity: 0.25;">
+                            <span class="slot-icon" style="font-size:0.8rem; opacity:0.15;">✖</span>
+                        </div>
+                    `;
+                }
+            }
+            listHtml += '</div></div>';
+
+            detailPanel.innerHTML = `
+                <div class="panel-header">
+                    <div>
+                        <div class="panel-subtitle">West Archive Vault</div>
+                        <div class="panel-title">${chestData.name}</div>
+                    </div>
+                    <span class="item-category-tag" style="background:rgba(239,68,68,0.15); border-color:var(--tile-west-vault); color:var(--tile-west-vault);">${chestData.category}</span>
+                </div>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.25rem;">
+                    ${chestData.desc} (容量: 2x2チェスト = 36スロット)
+                </p>
+                <div class="chest-inventory-title"><span>宝箱インベントリ (36スロット)</span></div>
+                <div class="inventory-grid">${slotsHtml}</div>
+                ${listHtml}
+            `;
+        }
+
+        function showEastVaultDetails(chestData) {
+            let slotsHtml = '';
+            let listHtml = '<div style="margin-top:1rem; border-top:1px solid rgba(255,255,255,0.1); padding-top:1rem;"><h4 style="font-size:0.9rem; color:var(--tile-east-vault); margin-bottom:0.75rem;">📋 建築建材・家具インテリア一覧 (クリックで詳細)</h4><div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">';
+            
+            for (let i = 0; i < 36; i++) {
+                const item = chestData.slots[i];
+                if (item) {
+                    slotsHtml += `
+                        <div class="inventory-slot occupied slot-${item.rarity}" 
+                             title="${item.name}"
+                             onclick="showItemPreview('${item.name.replace(/'/g, "\\'")}', '${item.emoji}', '${item.rarity}', '${item.desc.replace(/'/g, "\\'")}')">
+                            <span class="slot-icon">${item.emoji || '🪑'}</span>
+                        </div>
+                    `;
+                    listHtml += `
+                        <div class="text-list-item"
+                             onclick="showItemPreview('${item.name.replace(/'/g, "\\'")}', '${item.emoji}', '${item.rarity}', '${item.desc.replace(/'/g, "\\'")}')">
+                            <span>${item.emoji}</span>
+                            <span style="border-bottom:1px dashed rgba(255,255,255,0.15);">${item.name}</span>
+                        </div>
+                    `;
+                } else {
+                    slotsHtml += `
+                        <div class="inventory-slot" style="opacity: 0.25;">
+                            <span class="slot-icon" style="font-size:0.8rem; opacity:0.15;">✖</span>
+                        </div>
+                    `;
+                }
+            }
+            listHtml += '</div></div>';
+
+            detailPanel.innerHTML = `
+                <div class="panel-header">
+                    <div>
+                        <div class="panel-subtitle">East Build Vault</div>
+                        <div class="panel-title">${chestData.name}</div>
+                    </div>
+                    <span class="item-category-tag" style="background:rgba(180,83,9,0.15); border-color:var(--tile-east-vault); color:var(--tile-east-vault);">${chestData.category}</span>
+                </div>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.25rem;">
+                    ${chestData.desc} (容量: 2x2チェスト = 36スロット)
+                </p>
+                <div class="chest-inventory-title"><span>宝箱インベントリ (36スロット)</span></div>
+                <div class="inventory-grid">${slotsHtml}</div>
+                ${listHtml}
+            `;
+        }
+
+        function showMannequinDetails(mannequinData) {
+            let armorHtml = '<div style="display:flex; flex-direction:column; gap:8px;">';
+            mannequinData.armor.forEach(part => {
+                armorHtml += `
+                    <div class="item-row" style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); padding:10px; border-radius:8px; display:flex; align-items:center; gap:10px;">
+                        <div style="font-size:1.4rem;">${part.emoji}</div>
+                        <div>
+                            <div style="font-size:0.85rem; font-weight:700; color:#fff;">${part.name}</div>
+                            <div style="font-size:0.75rem; color:var(--text-muted);">${part.desc}</div>
+                        </div>
+                    </div>
+                `;
+            });
+            armorHtml += '</div>';
+
+            detailPanel.innerHTML = `
+                <div class="panel-header">
+                    <div>
+                        <div class="panel-subtitle">Mannequin Set Display</div>
+                        <div class="panel-title">${mannequinData.name}</div>
+                    </div>
+                    <span class="item-category-tag" style="background:rgba(234,88,12,0.15); border-color:#ea580c; color:#ea580c;">展示マネキン</span>
+                </div>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.25rem;">
+                    ${mannequinData.desc}
+                </p>
+                <div style="font-size: 0.9rem; font-weight: 700; color: var(--accent); margin-bottom: 0.5rem;">展示中の装備一式:</div>
+                ${armorHtml}
+            `;
+        }
+
+        window.showItemPreview = function(name, emoji, rarity, desc) {
+            previewBox.style.display = 'block';
+            
+            let rarityBg = 'var(--rarity-normal)';
+            if (rarity === 'rare') rarityBg = 'var(--rarity-rare)';
+            if (rarity === 'epic') rarityBg = 'var(--rarity-epic)';
+            if (rarity === 'legendary') rarityBg = 'var(--rarity-legendary)';
+
+            document.getElementById('preview-name').textContent = `${emoji} ${name}`;
+            document.getElementById('preview-rarity').textContent = rarity;
+            document.getElementById('preview-rarity').style.backgroundColor = rarityBg;
+            document.getElementById('preview-desc').innerHTML = desc;
+        }
+
+        function showBenchDetails(benchData) {
+            let extraText = "";
+            if (benchData.name.includes("帰還解体用")) {
+                extraText = "<br><br><strong>帰還動線における機能:</strong><br>冒険から帰ってきて即座に不要な武器・防具を解体し、スタック可能な金属パーツ等に変えることで、倉庫の余分な圧迫を未然に防ぎます。";
+            } else {
+                extraText = "<br><br><strong>連携範囲検証 (非干渉チェック):</strong><br>上部の素材チェスト(C1〜C12)は完璧に範囲内に収まっています。<br>一方で、左右の<strong>西翼・東翼大倉庫（D1〜D6, B1〜B6）</strong>および下部の<strong>出発・帰還チェスト（E1〜E8）はほぼ完璧に有効範囲から外れて</strong>います。これにより、余計なスタック不可装備や建築ブロックがクラフト範囲に検出されず、ゲームの『20個チェスト上限』エラーを完全に回避できています。";
+            }
+
+            detailPanel.innerHTML = `
+                <div class="panel-header">
+                    <div>
+                        <div class="panel-subtitle">Crafting Station</div>
+                        <div class="panel-title">${benchData.name}</div>
+                    </div>
+                    <span class="bench-category-tag">${benchData.category}</span>
+                </div>
+                <div class="stat-badge" style="background: rgba(16, 185, 129, 0.1); border-color: var(--tile-bench); color: var(--tile-bench); margin-bottom: 1rem;">
+                    <span>現在範囲シミュレーション中:</span>
+                    <span>青枠内がクラフト検知エリアです</span>
+                </div>
+                <div class="instructions-text" style="color: var(--text-main); line-height: 1.7;">
+                    <strong>説明:</strong><br>
+                    ${benchData.desc}
+                    ${extraText}
+                </div>
+            `;
+        }
+
+        function showPathDetails(x, y) {
+            let pathName = "通路";
+            let desc = "プレイヤーの移動スペースです。";
+            if (x === 2) {
+                pathName = "西翼・アーカイブ回廊";
+                desc = "コレクション倉庫(D1〜D6)に沿って縦に通る回廊。絵画やトロフィーを並べたギャラリーとしても楽しめます。";
+            } else if (x === 14) {
+                pathName = "東翼・メガ建築回廊";
+                desc = "建築資材・家具デポ(B1〜B6)に沿って縦に通る回廊。大量の建材を持ち運ぶ際のメイン動線です。";
+            } else if (y === 5) {
+                pathName = "クラフトエリア・中央通路";
+                desc = "クラフト設備が壁に囲まれず、プレイヤーが目の前に立って直接アクセス可能にする中央の通路。";
+            } else if (y === 12) {
+                pathName = "ターミナル接続通路";
+                desc = "クラフトハブ（上部）と冒険者ターミナル（下部）を繋ぐ通路。";
+            }
+
+            detailPanel.innerHTML = `
+                <div class="panel-header">
+                    <div>
+                        <div class="panel-subtitle">Base Path</div>
+                        <div class="panel-title">${pathName}</div>
+                    </div>
+                </div>
+                <p class="instructions-text" style="color: var(--text-main);">
+                    <strong>特徴:</strong><br>
+                    ${desc}<br><br>
+                    <strong>運用実用性:</strong><br>
+                    ・プレイヤーは引っかかることなく移動し、すべての設備に隣接し、すべてのチェストを開けることができます。<br>
+                    ・通路のどこにいても、手持ちのアイテムを「近くのチェストにクイックスタック」するショートカットを使用可能です。
+                </p>
+            `;
+        }
+
+        function showWallDetails() {
+            detailPanel.innerHTML = `
+                <div class="panel-header">
+                    <div>
+                        <div class="panel-subtitle">Structure</div>
+                        <div class="panel-title">境界壁 (Wall)</div>
+                    </div>
+                </div>
+                <p class="instructions-text" style="color: var(--text-main);">
+                    <strong>目的:</strong><br>
+                    クラフトハブエリアと、下部の冒険者ターミナルエリアを空間的に分断する壁です。<br><br>
+                    ・この壁によって、南側の最頻出設備（W16〜W20）からの『半径10マス判定』が、装備チェスト（E1〜E8）に被ってしまうのを防ぎ、余計なスタック不可装備が自動クラフト範囲に検出されないよう調整されています。
+                </p>
+            `;
+        }
+
+        function showFreeDetails(x, y) {
+            detailPanel.innerHTML = `
+                <div class="panel-header">
+                    <div>
+                        <div class="panel-subtitle">Free Space</div>
+                        <div class="panel-title">自由拡張スペース</div>
+                    </div>
+                </div>
+                <p class="instructions-text" style="color: var(--text-main); line-height: 1.7;">
+                    座標: [X: ${x}, Y: ${y}]<br><br>
+                    このマスはクラフトハブの『自由拡張ゾーン』です。クラフトの動線を邪魔しない配置になっており、自動精錬かまどライン、自動栽培畑などに拡張可能です。
+                </p>
+            `;
+        }
+
+        document.addEventListener('click', (e) => {
+            if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
+                searchResults.style.display = 'none';
+            }
+        });
+
+        initGrid();
+    </script>
+</body>
+</html>
