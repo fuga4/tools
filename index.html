@@ -468,6 +468,11 @@
             overflow-y: auto;
             padding-right: 5px;
             min-width: 0;
+            position: relative;
+        }
+
+        .drawer-close-btn {
+            display: none;
         }
 
         .detail-container::-webkit-scrollbar {
@@ -681,8 +686,9 @@
             }
             
             header {
-                height: calc(52px + env(safe-area-inset-top));
-                padding: calc(0.4rem + env(safe-area-inset-top)) 1rem 0.4rem;
+                height: auto;
+                /* iPhone 13 Pro等のノッチを避けるため、固定44px+セーフエリアの超強力なパディング */
+                padding: calc(44px + env(safe-area-inset-top)) 1rem 0.5rem;
             }
 
             .logo {
@@ -696,22 +702,24 @@
             
             main {
                 grid-template-columns: 1fr;
-                height: calc(100vh - (52px + env(safe-area-inset-top)) - env(safe-area-inset-bottom));
+                flex: 1;
+                height: 0; /* flexの溢れバグ防止 */
                 padding: 6px;
-                gap: 6px;
+                gap: 0;
                 overflow: hidden;
                 display: flex;
                 flex-direction: column;
+                position: relative;
             }
             
             .simulator-container {
-                flex: 1 1 45%; /* 最大で画面高の45%を占有し、残りは詳細パネルに譲る */
-                min-height: 0; /* 縮小可能にするために必須 */
+                flex: 1; /* マップが画面の縦幅いっぱいに表示されるように拡張 */
+                width: 100%;
                 display: flex;
                 flex-direction: column;
                 gap: 0;
                 align-items: center;
-                width: 100%;
+                min-height: 0;
             }
             
             /* 画面高を節約するため、スマホ時は説明文・凡例を完全に非表示 */
@@ -724,7 +732,7 @@
                 min-height: 0; /* 縮小可能にするために必須 */
                 width: 100%;
                 padding: 4px;
-                border-radius: 10px;
+                border-radius: 0;
                 box-shadow: none;
                 background: transparent;
                 border: none;
@@ -733,15 +741,15 @@
                 align-items: center;
             }
             
-            /* アスペクト比を維持しつつラッパー内に綺麗に収まり自動縮小する */
+            /* マップはアスペクト比を保ちつつ、画面の利用可能領域いっぱいに自動拡大縮小 */
             .grid-map {
-                max-width: 100%;
-                max-height: 100%;
+                max-width: 98vw;
+                max-height: calc(100% - 10px);
                 width: auto;
                 height: auto;
                 aspect-ratio: 17/25;
                 padding: 4px;
-                gap: 1px;
+                gap: 1.5px;
             }
             
             /* スマホ時でも文字とアイコンが被らず綺麗に縮小されて両方見える極小ルール */
@@ -751,14 +759,14 @@
 
             .grid-cell .emoji,
             .grid-cell span:first-child {
-                font-size: 0.62rem !important; /* アイコンを微細縮小 */
+                font-size: 0.68rem !important; /* アイコンを微調整 */
                 margin-bottom: 0.3px !important;
             }
             
             .grid-cell .cell-label,
             .grid-cell span:last-child {
                 display: block !important; 
-                font-size: 0.3rem !important; /* 極小ながら読めるフォント */
+                font-size: 0.32rem !important; /* 極小ながら読めるフォント */
                 transform: scale(0.78);
                 line-height: 1;
                 margin-top: 0.3px;
@@ -769,23 +777,63 @@
             .cell-mannequin span:first-child,
             .cell-outbound-chest span:first-child,
             .cell-inbound-chest span:first-child {
-                font-size: 0.62rem !important;
+                font-size: 0.68rem !important;
             }
 
-            /* 下部詳細パネルを画面下半分の残りのスペースにぴったり固定し、中身だけをスクロール */
+            /* スマホ用：画面外からせり上がるボトムドロワー（マップの上に重なる） */
             .detail-container {
-                flex: 1 1 50%; /* 画面下半分の約50%〜55%を割り当て */
-                min-height: 0; 
-                max-height: none;
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                height: 75vh; /* 画面の下部75%を覆うドロワー */
+                background: rgba(11, 13, 16, 0.98);
+                border-top: 3px solid var(--primary);
+                border-radius: 20px 20px 0 0;
+                box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.85);
+                z-index: 1000;
+                transform: translateY(100%); /* 初期状態は画面外に隠す */
+                transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+                padding: 2.5rem 1rem calc(20px + env(safe-area-inset-bottom));
                 overflow-y: auto;
-                padding-right: 0;
+                display: flex;
+                flex-direction: column;
+                gap: 1rem;
                 width: 100%;
+            }
+
+            .detail-container.active {
+                transform: translateY(0); /* マップタップ時にせり上がる */
+            }
+
+            /* スマホ用クローズボタンの表示とレイアウト */
+            .drawer-close-btn {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                position: absolute;
+                top: 12px;
+                right: 16px;
+                background: rgba(255, 255, 255, 0.15);
+                border: 1px solid rgba(255, 255, 255, 0.25);
+                color: #fff;
+                font-size: 1rem;
+                width: 32px;
+                height: 32px;
+                border-radius: 50%;
+                cursor: pointer;
+                z-index: 1010;
+                transition: background 0.2s;
+            }
+            
+            .drawer-close-btn:hover {
+                background: rgba(255, 255, 255, 0.3);
             }
             
             .info-panel {
                 padding: 10px;
                 border-radius: 12px;
-                height: 100%;
+                height: auto;
                 display: flex;
                 flex-direction: column;
                 box-shadow: none;
@@ -820,9 +868,9 @@
             header {
                 flex-direction: column;
                 align-items: stretch;
-                padding: calc(0.5rem + env(safe-area-inset-top)) 0.75rem 0.5rem;
+                padding: calc(44px + env(safe-area-inset-top)) 0.75rem 0.5rem;
                 gap: 8px;
-                height: calc(80px + env(safe-area-inset-top));
+                height: auto;
             }
 
             .header-logo-row {
@@ -836,7 +884,7 @@
             }
 
             main {
-                height: calc(100vh - (80px + env(safe-area-inset-top)) - env(safe-area-inset-bottom));
+                height: flex; /* flexレイアウトに委ねる */
             }
         }
     </style>
@@ -914,8 +962,9 @@
             </div>
         </div>
 
-        <!-- 右側：詳細表示パネル -->
-        <div class="detail-container">
+        <!-- 右側：詳細表示パネル（スマホ時はボトムドロワー） -->
+        <div class="detail-container" id="detail-container">
+            <button class="drawer-close-btn" id="drawer-close-btn">✖</button>
             <div class="info-panel" id="detail-panel">
                 <div class="panel-header">
                     <div>
@@ -1319,6 +1368,8 @@
 
         const mapGrid = document.getElementById('map-grid');
         const detailPanel = document.getElementById('detail-panel');
+        const detailContainer = document.getElementById('detail-container');
+        const drawerCloseBtn = document.getElementById('drawer-close-btn');
         const simOverlay = document.getElementById('sim-overlay');
         const previewBox = document.getElementById('item-preview-box');
         const searchInput = document.getElementById('search-input');
@@ -1506,6 +1557,10 @@
             if (equipChests[chestId]) showEquipChestDetails(targetChestData);
             if (westVault[chestId]) showWestVaultDetails(targetChestData);
             if (eastVault[chestId]) showEastVaultDetails(targetChestData);
+
+            if (window.innerWidth <= 1024) {
+                detailContainer.classList.add('active');
+            }
         }
 
         function clearSearchHighlight() {
@@ -1520,6 +1575,10 @@
             const cellType = mapData[y][x];
             previewBox.style.display = 'none';
             clearSearchHighlight();
+
+            if (window.innerWidth <= 1024) {
+                detailContainer.classList.add('active');
+            }
 
             if (cellType === 3 && registryInfo) {
                 const clickedBenchId = registryInfo.id;
@@ -1935,6 +1994,13 @@
                 </p>
             `;
         }
+
+        // ドロワーのクローズボタン処理
+        drawerCloseBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            detailContainer.classList.remove('active');
+            clearSimulation();
+        });
 
         document.addEventListener('click', (e) => {
             if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
