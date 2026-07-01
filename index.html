@@ -1023,7 +1023,7 @@
                 { name: "リラサイト of インゴット", emoji: "🪙", rarity: "normal", desc: "最新装備のクラフトに使用する極めて貴重なインゴット。" },
                 { name: "古代 of 宝石", emoji: "💎", rarity: "rare", desc: "装備品の性能をアップグレード台で強化するのに必要な宝石。" },
                 { name: "密林 of ヒスイ", emoji: "🟢", rarity: "rare", desc: "アゼオス原生地域の異星の施設などで手に入る強化ジェム。" },
-                { name: "海のサファイア", emoji: "🔵", rarity: "rare", desc: "沈んだ海バイオームの異星の施設などで手に入る強化ジェム。" },
+                { name: "海のサファイア", emoji: "🔵", rarity: "rare", desc: "沈んだ海バイオームの異星 of 施設などで手に入る強化ジェム。" },
                 { name: "砂漠 of ルビー", emoji: "🔴", rarity: "rare", desc: "始まりの砂漠バイオームの異星の施設などで手に入る強化ジェム。" }
             ]},
             "C5": { name: "C5: 電気・自動化部品 (大チェスト)", label: "電線/アーム", icon: "🔌", category: "自動化素材", coords: [[3,3],[4,3],[3,4],[4,4]], desc: "電気配線やベルトコンベアなどの自動化ラインをクラフトする素材です。", slots: [
@@ -1196,7 +1196,7 @@
             "M1": { name: "M1: 採掘特化セット (マネキン)", coords: [[4,13]], icon: "🤖", category: "展示マネキン", desc: "【採掘速度・採掘ダメージ最大化ビルド】", armor: [
                 { name: "真紅石のヘルメット", emoji: "🪖", desc: "採掘ダメージ+12%の頭防具。" },
                 { name: "真紅石の胸当て", emoji: "🧥", desc: "採掘ダメージ+15%の胴防具。" },
-                { name: "真紅石の足甲", emoji: "🧦", desc: "採掘速度+8%の脚防具。" },
+                { name: "真紅石 of 足甲", emoji: "🧦", desc: "採掘速度+8%の脚防具。" },
                 { name: "古代のツルハシ (武器枠)", emoji: "⛏️", desc: "圧倒的な採掘力を持つツルハシ。" }
             ]},
             "M2": { name: "M2: 移動速度特化セット (マネキン)", coords: [[5,13]], icon: "🤖", category: "展示マネキン", desc: "【拠点整理・マップ探索爆速ビルド】", armor: [
@@ -1209,26 +1209,26 @@
 
         // 設備 (W1〜W20)
         const benches = {
-            "W1": { name: "W1: ボート用作業台", type: "bench", coord: [5,7], category: "特殊・移動", icon: "⛵", desc: "水上探索用ボートなどのクラフト。" },
-            "W2": { name: "W2: ゴーカート用作業台", type: "bench", coord: [6,7], category: "特殊・移動", icon: "🏎️", desc: "砂漠の高速移動用ゴーカート等のクラフト。" },
-            "W3": { name: "W3: ポータル", type: "bench", coord: [7,7], category: "特殊・移動", icon: "🌀", desc: "他拠点との間のファストトラベル装置。" },
-            "W4": { name: "W4: ペインターのテーブル", type: "bench", coord: [8,7], category: "建築装飾", icon: "🎨", desc: "チェストやブロックの色染めブラシの製作。" },
-            "W5": { name: "W5: 自由枠", type: "bench", coord: [9,7], category: "イベント/その他", icon: "🎁", desc: "限定イベント等の作業台用のフリースペース。" },
-            "W6": { name: "W6: 電気台", type: "bench", coord: [5,6], category: "自動化・電気", icon: "💡", desc: "電線や論理スイッチなどの基本回路工作。" },
-            "W7": { name: "W7: 自動化テーブル", type: "bench", coord: [6,6], category: "自動化・電気", icon: "🤖", desc: "コンベアベルトやロボットアームなどの工業パーツ。" },
-            "W8": { name: "W8: 鉄道用鍛冶場", type: "bench", coord: [7,6], category: "特殊・移動", icon: "🚂", desc: "線路（レール）や自動トロッコを鍛造します。" },
-            "W9": { name: "W9: 家畜用作業台", type: "bench", coord: [8,6], category: "牧畜", icon: "🐏", desc: "家畜用ケージ、自動搾乳機などの牧畜用品。" },
-            "W10": { name: "W10: 釣り用作業台", type: "bench", coord: [9,6], category: "釣り", icon: "🎣", desc: "釣竿、エサ、バイオーム特効ルアーを製作。" },
-            "W11": { name: "W11: 錬金台 / 実験台", type: "bench", coord: [5,4], category: "バフ・薬品", icon: "🧪", desc: "回復ポーションや各種戦闘耐性薬を調合します。" },
-            "W12": { name: "W12: テーブルソー", type: "bench", coord: [6,4], category: "素材加工", icon: "🪚", desc: "原木を木工用パーツや板に加工します。" },
-            "W13": { name: "W13: 織機", type: "bench", coord: [7,4], category: "素材加工", icon: "🧶", desc: "繊維や羊毛からスレッド、布地を紡ぎ、皮装備を製作。" },
-            "W14": { name: "W14: ジュエリーの作業台", type: "bench", coord: [8,4], category: "装備クラフト", icon: "💍", desc: "指輪やネックレスを作成。" },
-            "W15": { name: "W15: 大工のテーブル", type: "bench", coord: [9,4], category: "建築装飾", icon: "🪑", desc: "各種デザイン家具をクラフト。" },
-            "W16": { name: "W16: ボート予備枠", type: "bench", coord: [5,3], category: "特殊・移動", icon: "⛵", desc: "予備空きマス。" },
-            "W17": { name: "W17: 自由予備枠", type: "bench", coord: [6,3], category: "その他", icon: "🎁", desc: "予備空きマス。" },
-            "W18": { name: "W18: ソラライトの作業台", type: "bench", coord: [7,3], category: "基本クラフト", icon: "🛠️", desc: "最上位の作業台。ツールや基本装備の最終レシピをクラフト。" },
-            "W19": { name: "W19: ソラライトの金床", type: "bench", coord: [8,3], category: "装備クラフト", icon: "🔨", desc: "最高クラスのソラライト武器・盾・防具を鍛造します。" },
-            "W20": { name: "W20: アップグレード台", type: "bench", coord: [9,3], category: "装備強化", icon: "⚡", desc: "装備の性能を最大強化します。" },
+            "W1": { name: "W1: ボート用作業台", type: "bench", coord: [6,7], category: "特殊・移動", icon: "⛵", desc: "水上探索用ボートなどのクラフト。" },
+            "W2": { name: "W2: ゴーカート用作業台", type: "bench", coord: [7,7], category: "特殊・移動", icon: "🏎️", desc: "砂漠の高速移動用ゴーカート等のクラフト。" },
+            "W3": { name: "W3: ポータル", type: "bench", coord: [8,7], category: "特殊・移動", icon: "🌀", desc: "他拠点との間のファストトラベル装置。" },
+            "W4": { name: "W4: ペインターのテーブル", type: "bench", coord: [9,7], category: "建築装飾", icon: "🎨", desc: "チェストやブロックの色染めブラシの製作。" },
+            "W5": { name: "W5: 自由枠", type: "bench", coord: [10,7], category: "イベント/その他", icon: "🎁", desc: "限定イベント等の作業台用のフリースペース。" },
+            "W6": { name: "W6: 電気台", type: "bench", coord: [6,6], category: "自動化・電気", icon: "💡", desc: "電線や論理スイッチなどの基本回路工作。" },
+            "W7": { name: "W7: 自動化テーブル", type: "bench", coord: [7,6], category: "自動化・電気", icon: "🤖", desc: "コンベアベルトやロボットアームなどの工業パーツ。" },
+            "W8": { name: "W8: 鉄道用鍛冶場", type: "bench", coord: [8,6], category: "特殊・移動", icon: "🚂", desc: "線路（レール）や自動トロッコを鍛造します。" },
+            "W9": { name: "W9: 家畜用作業台", type: "bench", coord: [9,6], category: "牧畜", icon: "🐏", desc: "家畜用ケージ、自動搾乳機などの牧畜用品。" },
+            "W10": { name: "W10: 釣り用作業台", type: "bench", coord: [10,6], category: "釣り", icon: "🎣", desc: "釣竿、エサ、バイオーム特効ルアーを製作。" },
+            "W11": { name: "W11: 錬金台 / 実験台", type: "bench", coord: [6,4], category: "バフ・薬品", icon: "🧪", desc: "回復ポーションや各種戦闘耐性薬を調合します。" },
+            "W12": { name: "W12: テーブルソー", type: "bench", coord: [7,4], category: "素材加工", icon: "🪚", desc: "原木を木工用パーツや板に加工します。" },
+            "W13": { name: "W13: 織機", type: "bench", coord: [8,4], category: "素材加工", icon: "🧶", desc: "繊維や羊毛からスレッド、布地を紡ぎ、皮装備を製作。" },
+            "W14": { name: "W14: ジュエリーの作業台", type: "bench", coord: [9,4], category: "装備クラフト", icon: "💍", desc: "指輪やネックレスを作成。" },
+            "W15": { name: "W15: 大工のテーブル", type: "bench", coord: [10,4], category: "建築装飾", icon: "🪑", desc: "各種デザイン家具をクラフト。" },
+            "W16": { name: "W16: ボート予備枠", type: "bench", coord: [6,3], category: "特殊・移動", icon: "⛵", desc: "予備空きマス。" },
+            "W17": { name: "W17: 自由予備枠", type: "bench", coord: [7,3], category: "その他", icon: "🎁", desc: "予備空きマス。" },
+            "W18": { name: "W18: ソラライトの作業台", type: "bench", coord: [8,3], category: "基本クラフト", icon: "🛠️", desc: "最上位の作業台。ツールや基本装備の最終レシピをクラフト。" },
+            "W19": { name: "W19: ソラライトの金床", type: "bench", coord: [9,3], category: "装備クラフト", icon: "🔨", desc: "最高クラスのソラライト武器・盾・防具を鍛造します。" },
+            "W20": { name: "W20: アップグレード台", type: "bench", coord: [10,3], category: "装備強化", icon: "⚡", desc: "装備の性能を最大強化します。" },
             "W17_Vault": { name: "帰還解体用：回収と修理の台", type: "bench", coord: [9,13], category: "装備メンテ", icon: "🔧", desc: "【帰還動線の要】冒険から帰還して即座に不要装備を解体リサイクルしてスタック可能な素材に分解します。" }
         };
 
